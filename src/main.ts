@@ -59,13 +59,18 @@ const stage = h(
   Grain(),
   bubblesLayer,
   scenesLayer,
-  h('div.hud', {}, status, h('div.hud__corner', {}, PauseButton(ui), ExitButton(ui, openExit))),
+  // док раньше HUD: Tab ведёт сначала по игре, потом к «пауза» и «уйти»
   h('div.dock', {}, hintEl, controls, upBtn, nextLapBtn, footer),
+  h('div.hud', {}, status, h('div.hud__corner', {}, PauseButton(ui), ExitButton(ui, openExit))),
 );
 app.append(FilterDefs(), stage, exitScreen.el);
 mountLive(app);
 motion.init();
 startBoilClock();
+
+// игровая область кончается над доком с кнопками, чтобы они не закрывали героя
+const dock = stage.querySelector<HTMLElement>('.dock')!;
+new ResizeObserver(() => stage.style.setProperty('--dock-space', `${dock.offsetHeight}px`)).observe(dock);
 
 const hero = new Hero(heroSpec, import.meta.env.BASE_URL);
 heroLayer.append(hero.el);

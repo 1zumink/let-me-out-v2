@@ -84,16 +84,16 @@
         "id": "wardrobe",
         "label": "шкаф",
         "src": "assets/collage/wardrobe.svg",
-        "x": 18,
+        "x": 16,
         "y": 84,
-        "w": 17
+        "w": 16
       },
       {
         "id": "window",
         "label": "окно",
         "src": "assets/collage/window.svg",
-        "x": 34,
-        "y": 50,
+        "x": 30,
+        "y": 48,
         "w": 16
       },
       {
@@ -101,22 +101,22 @@
         "label": "часы",
         "src": "assets/collage/clock.svg",
         "x": 52,
-        "y": 28,
+        "y": 26,
         "w": 9
       },
       {
         "id": "table",
         "label": "стол",
         "src": "assets/collage/table.svg",
-        "x": 47,
+        "x": 40,
         "y": 84,
-        "w": 20
+        "w": 18
       },
       {
         "id": "chair",
         "label": "стул",
         "src": "assets/collage/chair.svg",
-        "x": 60,
+        "x": 57,
         "y": 84,
         "w": 10
       },
@@ -124,25 +124,25 @@
         "id": "bed",
         "label": "кровать",
         "src": "assets/collage/bed.svg",
-        "x": 74,
+        "x": 77,
         "y": 84,
-        "w": 28
+        "w": 24
       },
       {
         "id": "lamp",
         "label": "лампа",
         "src": "assets/collage/lamp.svg",
-        "x": 88,
-        "y": 84,
+        "x": 82,
+        "y": 48,
         "w": 10
       },
       {
         "id": "rug",
         "label": "ковёр",
         "src": "assets/collage/rug.svg",
-        "x": 52,
-        "y": 92,
-        "w": 32
+        "x": 48,
+        "y": 93,
+        "w": 30
       }
     ],
     "lines": {
