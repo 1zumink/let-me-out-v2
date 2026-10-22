@@ -476,3 +476,70 @@ a {
 .credits dd {
   margin: 2px 0 0;
 }
+
+/* ── сайд-сцены ─────────────────────────────────────── */
+.scenes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 72px var(--gutter) 0;
+  pointer-events: none;
+}
+.scene {
+  position: relative;
+  max-width: min(30rem, 100%);
+  padding: 18px 52px 18px 20px;
+  font-size: 20px;
+  color: var(--line);
+  background: rgb(11 11 12 / 0.94);
+  border: 2px solid var(--line);
+  border-radius: var(--sketch-radius);
+  pointer-events: auto;
+  opacity: 0;
+  translate: 0 -6px;
+  transition:
+    opacity 0.4s ease,
+    translate 0.4s ease;
+}
+.scene.is-in {
+  opacity: 1;
+  translate: 0 0;
+}
+.is-reduced .scene {
+  transition: none;
+  translate: none;
+}
+.scene .creature {
+  position: static;
+  display: block;
+  translate: none;
+  margin: 0 auto 8px;
+}
+.scene__text {
+  margin: 0;
+}
+.scene__close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--line);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.stage-footer {
+  display: flex;
+  justify-content: center;
+}
+.btn--small {
+  font-size: 16px;
+  padding: 4px 12px;
+}

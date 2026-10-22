@@ -43,6 +43,7 @@ export interface Scene {
   text: string;
   laps: number[];
   pairOf?: string | null;
+  creature?: string | null;
 }
 
 export interface Quote {

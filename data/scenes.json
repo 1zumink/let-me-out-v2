@@ -1,1 +1,106 @@
-[]
+[
+  {
+    "id": "S1",
+    "text": "TODO: текст сайд-сцены S1 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S2",
+    "text": "TODO: текст сайд-сцены S2 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S3",
+    "text": "TODO: текст сайд-сцены S3 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S4",
+    "text": "TODO: текст сайд-сцены S4 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S5",
+    "text": "TODO: текст сайд-сцены S5 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S6",
+    "text": "TODO: текст сайд-сцены S6 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S7",
+    "text": "TODO: текст сайд-сцены S7 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S8",
+    "text": "TODO: текст сайд-сцены S8 (docs/text-v2.md)",
+    "laps": [
+      1,
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S9",
+    "text": "TODO: текст сайд-сцены S9 (docs/text-v2.md)",
+    "laps": [
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S10",
+    "text": "TODO: текст сайд-сцены S10 (docs/text-v2.md)",
+    "laps": [
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S11",
+    "text": "TODO: текст сайд-сцены S11 (docs/text-v2.md)",
+    "laps": [
+      2
+    ],
+    "pairOf": null
+  },
+  {
+    "id": "S12",
+    "text": "TODO: текст сайд-сцены S12 (docs/text-v2.md)",
+    "laps": [
+      2
+    ],
+    "pairOf": null
+  }
+]

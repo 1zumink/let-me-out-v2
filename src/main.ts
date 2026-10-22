@@ -1,7 +1,7 @@
 import './styles/base.css';
 import './styles/layers.css';
 import './styles/games.css';
-import { floors, heroSpec, ui, webring } from './data';
+import { floors, heroSpec, scenes, ui, webring } from './data';
 import { createStore, type Lap } from './state';
 import { storage, LAP_KEY } from './storage';
 import { mulberry32, seedFromUrl } from './rng';
@@ -16,6 +16,7 @@ import { createBubbles } from './ui/SpeechBubble';
 import { floorModules } from './floors';
 import { Atmosphere, FilterDefs, Grain } from './scene/Atmosphere';
 import { startBoilClock } from './scene/boil';
+import { createSideScenes } from './scenes/sideScenes';
 import type { Floor, FloorCtx, Hint } from './floors/types';
 
 const HINT_MS = 20000;
@@ -42,6 +43,9 @@ const controls = h('div.controls');
 const upBtn = h('button.btn.btn--up', { type: 'button', hidden: true, title: ui.upHint }, ui.up);
 const nextLapBtn = h('button.btn.btn--up', { type: 'button', hidden: true }, ui.nextLap);
 const status = h('p.status');
+const scenesLayer = h('div.scenes');
+const restartBtn = h('button.btn.btn--small', { type: 'button' }, ui.restart);
+const footer = h('footer.stage-footer', { hidden: true }, restartBtn);
 const exitScreen = ExitScreen(ui, webring, { onBack: closeExit, onRestart: restartFromZero });
 
 const stage = h(
@@ -54,8 +58,9 @@ const stage = h(
   lightEl,
   Grain(),
   bubblesLayer,
+  scenesLayer,
   h('div.hud', {}, status, h('div.hud__corner', {}, PauseButton(ui), ExitButton(ui, openExit))),
-  h('div.dock', {}, hintEl, controls, upBtn, nextLapBtn),
+  h('div.dock', {}, hintEl, controls, upBtn, nextLapBtn, footer),
 );
 app.append(FilterDefs(), stage, exitScreen.el);
 mountLive(app);
@@ -66,6 +71,10 @@ const hero = new Hero(heroSpec, import.meta.env.BASE_URL);
 heroLayer.append(hero.el);
 const bubbles = createBubbles(bubblesLayer);
 const input = createInput(stage);
+const sideScenes = createSideScenes({ layer: scenesLayer, store, scenes, rng, ui });
+// «начать с нуля» в футере — когда есть что сбрасывать (второй круг)
+store.subscribe((s) => (footer.hidden = s.lap !== 2));
+footer.hidden = store.get().lap !== 2;
 
 // ── этажи ─────────────────────────────────────────────
 interface Current {
@@ -174,8 +183,10 @@ async function onDone(index: number, ac: AbortController) {
   prefetch(index + 1);
   if (current) await current.ctx.say(current.ctx.lines('done'));
   if (ac.signal.aborted) return;
+  sideScenes.maybeShow();
   if (data.final) {
     storage.set(LAP_KEY, '2');
+    footer.hidden = false;
     nextLapBtn.hidden = false;
     focus(nextLapBtn);
   } else {
@@ -189,6 +200,7 @@ function goUp() {
   if (s.phase !== 'stop' || s.floor >= floors.length - 1 || exitScreen.isOpen) return;
   upBtn.hidden = true;
   bubbles.clear();
+  sideScenes.close();
   store.phase('exit');
   hero.reset();
   hero.set('climb');
@@ -199,6 +211,7 @@ function goUp() {
 function restart(lap: Lap) {
   upBtn.hidden = nextLapBtn.hidden = true;
   bubbles.clear();
+  sideScenes.reset();
   const prev = current;
   current = null;
   teardown(prev);
@@ -226,6 +239,18 @@ function restartFromZero() {
 upBtn.addEventListener('click', goUp);
 nextLapBtn.addEventListener('click', () => restart(2));
 input.on('up', goUp);
-input.on('escape', () => (exitScreen.isOpen ? closeExit() : bubbles.skip()));
+input.on('escape', () => {
+  if (exitScreen.isOpen) closeExit();
+  else if (sideScenes.isOpen) sideScenes.close();
+  else bubbles.skip();
+});
+restartBtn.addEventListener('click', restartFromZero);
 
 enterFloor({ travel: false });
+
+// офлайн после первой загрузки (только в сборке: в dev кеш мешал бы правкам)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {
+    /* без service worker история работает так же, просто без офлайна */
+  });
+}
