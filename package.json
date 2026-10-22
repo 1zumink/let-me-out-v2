@@ -1,0 +1,25 @@
+{
+  "name": "let-me-out",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/validate-data.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/validate-data.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "sprites:normalize": "node scripts/sprites-normalize.mjs",
+    "sprites:check": "node scripts/sprites-check.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/neucha": "^5.3.0",
+    "sharp": "^0.33.5",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  }
+}

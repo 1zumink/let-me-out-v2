@@ -1,0 +1,10 @@
+{
+  "idle":    { "frames": 4, "fps": 6,  "loop": true },
+  "climb":   { "frames": 6, "fps": 10, "loop": true },
+  "slip":    { "frames": 4, "fps": 8,  "loop": true },
+  "hold":    { "frames": 4, "fps": 6,  "loop": true },
+  "breathe": { "frames": 4, "fps": 3,  "loop": true },
+  "fly":     { "frames": 6, "fps": 10, "loop": true },
+  "hang":    { "frames": 4, "fps": 6,  "loop": true },
+  "letgo":   { "frames": 5, "fps": 8,  "loop": false }
+}
