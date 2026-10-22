@@ -1,0 +1,256 @@
+/* Слои сцены сзади вперёд: фон+туман → мир-силуэт → коллаж → живое → свет → зерно → комикс → HUD */
+
+@property --lx {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 50%;
+}
+@property --ly {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 60%;
+}
+@property --lr {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 34vmax;
+}
+
+/* 1. фон и туман */
+.atmo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.atmo__bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%);
+}
+.fog {
+  position: absolute;
+  inset: -10% -50%;
+  opacity: 0.16;
+  background:
+    radial-gradient(ellipse 30% 14% at 30% 62%, rgb(232 228 220 / 0.55), transparent 70%),
+    radial-gradient(ellipse 22% 10% at 72% 38%, rgb(232 228 220 / 0.45), transparent 70%);
+  animation: fog-drift 80s linear infinite alternate;
+  will-change: transform;
+}
+.fog--2 {
+  opacity: 0.12;
+  top: 20%;
+  animation-duration: 110s;
+  animation-direction: alternate-reverse;
+}
+.fog--3 {
+  opacity: 0.09;
+  top: -25%;
+  animation-duration: 140s;
+}
+@keyframes fog-drift {
+  to {
+    transform: translateX(22%);
+  }
+}
+
+/* 2. мир-силуэт */
+.silhouette {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: var(--wall);
+}
+.silhouette .glass rect {
+  fill: rgb(232 228 220 / 0.14);
+  stroke: rgb(232 228 220 / 0.55);
+  stroke-width: 0.15;
+  vector-effect: non-scaling-stroke;
+}
+.silhouette .glass path {
+  fill: none;
+  stroke: rgb(232 228 220 / 0.6);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* 3. коллаж: вырезки из фото, ч/б, затемнены, белая «ножничная» обводка */
+.cutout {
+  position: absolute;
+  translate: -50% -100%;
+  rotate: var(--rot, 0deg);
+  filter: grayscale(1) brightness(0.6) contrast(1.1) drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff);
+}
+
+/* 4. живое: герой и существа, кипящая линия */
+.creature {
+  position: absolute;
+  translate: -50% -50%;
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+html[data-boil='0']:not(.is-reduced):not(.is-paused) .boil {
+  filter: url(#boil-0);
+}
+html[data-boil='1']:not(.is-reduced):not(.is-paused) .boil {
+  filter: url(#boil-1);
+}
+html[data-boil='2']:not(.is-reduced):not(.is-paused) .boil {
+  filter: url(#boil-2);
+}
+.hero.is-ghost .hero__sprite,
+.hero.is-ghost .hero__svg {
+  filter: url(#ghost) !important;
+}
+.defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* 6. свет: одно тёплое пятно ведёт взгляд, остальное в тени */
+.light {
+  background: radial-gradient(
+    circle at var(--lx) var(--ly),
+    transparent 0,
+    transparent calc(var(--lr) * 0.35),
+    rgb(0 0 0 / 0.5) calc(var(--lr) * 0.75),
+    rgb(0 0 0 / 0.82) var(--lr)
+  );
+  transition:
+    --lx 1.2s ease-in-out,
+    --ly 1.2s ease-in-out,
+    --lr 1.4s ease-in-out;
+}
+.light::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--lx) var(--ly), rgb(242 230 201 / 0.55) 0, transparent calc(var(--lr) * 0.55));
+  mix-blend-mode: soft-light;
+}
+.stage.is-inhale .light {
+  --lr: 46vmax;
+}
+.is-reduced .light {
+  transition: none;
+}
+
+/* зерно плёнки */
+.grain {
+  position: absolute;
+  inset: -50%;
+  pointer-events: none;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 0.9s steps(3) infinite;
+}
+@keyframes grain {
+  0% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(-7%, 4%);
+  }
+  66% {
+    transform: translate(5%, -6%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* reduced motion и пауза: туман и зерно стоят */
+.is-reduced .fog,
+.is-reduced .grain,
+.is-paused .fog,
+.is-paused .grain {
+  animation-play-state: paused;
+}
+.is-reduced .fog,
+.is-reduced .grain {
+  animation: none;
+}
+
+/* надпись на стене */
+.wall-quote {
+  position: absolute;
+  margin: 0;
+  max-width: min(22rem, 70vw);
+  translate: -50% -50%;
+  rotate: var(--tilt, 0deg);
+  font-family: var(--font-quote);
+  color: var(--line);
+  opacity: 0;
+  transition: opacity 1.6s ease;
+}
+.wall-quote.is-lit {
+  opacity: 1;
+}
+.is-reduced .wall-quote {
+  transition: none;
+}
+.wall-quote__text {
+  margin: 0;
+  font-size: clamp(22px, 5vw, 32px);
+  line-height: 1.15;
+}
+.wall-quote__word {
+  display: inline-block;
+  font-weight: var(--w, 400);
+  rotate: var(--r, 0deg);
+  scale: var(--s, 1);
+  position: relative;
+}
+s.wall-quote__word {
+  text-decoration-thickness: 3px;
+  text-decoration-color: var(--line);
+}
+.wall-quote__word.has-drip::after {
+  content: '';
+  position: absolute;
+  left: 55%;
+  top: 80%;
+  width: 2px;
+  height: 1.1em;
+  border-radius: 0 0 2px 2px;
+  background: linear-gradient(var(--line), rgb(232 228 220 / 0));
+}
+.wall-quote__by {
+  margin-top: 6px;
+  font-family: var(--font-hand);
+  font-size: 16px;
+  color: var(--muted);
+  text-align: right;
+}
+.footnote {
+  margin-left: 4px;
+}
+.footnote__mark {
+  min-width: 44px;
+  min-height: 44px;
+  margin: -12px -8px -12px 0;
+  font: inherit;
+  color: var(--light);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.footnote__text {
+  display: block;
+  font-size: 14px;
+}
+
+/* рука того, кто держит — нарисованная линия сверху */
+.grip__arm {
+  width: 4px;
+  border-radius: 2px;
+}

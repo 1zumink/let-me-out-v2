@@ -3,11 +3,13 @@ import { games } from '../games';
 import type { Game } from '../games/common';
 import type { HeroState } from '../hero/hero';
 import type { Floor, FloorCtx } from './types';
+import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
 
 export interface GameFloorOptions {
   heroAt?: [number, number];
   heroState?: HeroState;
   restState?: HeroState;
+  world?: SilhouetteOptions;
   decorate?: (ctx: FloorCtx) => void;
 }
 
@@ -17,6 +19,8 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
   return {
     mount(c) {
       ctx = c;
+      const [x, y] = opts.heroAt ?? [50, 78];
+      c.el.append(silhouette(c.rng, opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] }));
       opts.decorate?.(c);
     },
     arrive() {

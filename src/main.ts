@@ -1,4 +1,5 @@
 import './styles/base.css';
+import './styles/layers.css';
 import { floors, heroSpec, ui, webring } from './data';
 import { createStore, type Lap } from './state';
 import { storage, LAP_KEY } from './storage';
@@ -12,6 +13,8 @@ import { PauseButton } from './ui/PauseButton';
 import { ExitScreen } from './ui/ExitScreen';
 import { createBubbles } from './ui/SpeechBubble';
 import { floorModules } from './floors';
+import { Atmosphere, FilterDefs, Grain } from './scene/Atmosphere';
+import { startBoilClock } from './scene/boil';
 import type { Floor, FloorCtx, Hint } from './floors/types';
 
 const HINT_MS = 20000;
@@ -39,17 +42,19 @@ const stage = h(
   'main.stage',
   {},
   h('h1.sr-only', {}, ui.title),
-  h('div.bg', { 'aria-hidden': 'true' }),
+  Atmosphere(),
   world,
   heroLayer,
   lightEl,
+  Grain(),
   bubblesLayer,
   h('div.hud', {}, status, h('div.hud__corner', {}, PauseButton(ui), ExitButton(ui, openExit))),
   h('div.dock', {}, hintEl, controls, upBtn, nextLapBtn),
 );
-app.append(stage, exitScreen.el);
+app.append(FilterDefs(), stage, exitScreen.el);
 mountLive(app);
 motion.init();
+startBoilClock();
 
 const hero = new Hero(heroSpec, import.meta.env.BASE_URL);
 heroLayer.append(hero.el);

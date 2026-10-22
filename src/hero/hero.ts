@@ -47,11 +47,11 @@ export class Hero {
     this.el = document.createElement('div');
     this.el.className = 'hero';
     this.sprite = document.createElement('div');
-    this.sprite.className = 'hero__sprite';
+    this.sprite.className = 'hero__sprite boil';
     this.sprite.setAttribute('aria-hidden', 'true');
     this.svg = document.createElementNS(SVG_NS, 'svg');
     this.svg.setAttribute('viewBox', '0 0 256 256');
-    this.svg.classList.add('hero__svg');
+    this.svg.classList.add('hero__svg', 'boil');
     this.svg.setAttribute('aria-hidden', 'true');
     this.el.append(this.sprite, this.svg);
     motion.onChange(() => this.replay());

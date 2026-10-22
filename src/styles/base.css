@@ -155,13 +155,6 @@ a {
   touch-action: none;
 }
 
-.bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%);
-  z-index: -2;
-}
-
 /* камера: этаж i лежит на i экранов выше, мир едет вниз */
 .world {
   position: absolute;
@@ -287,18 +280,10 @@ a {
   opacity: 0.9;
 }
 
-/* свет: всё в тени, кроме тёплого пятна */
 .light {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(
-    circle at var(--lx, 50%) var(--ly, 60%),
-    rgb(242 230 201 / 0.1) 0,
-    transparent calc(var(--lr, 34vmax) * 0.5),
-    rgb(0 0 0 / 0.55) var(--lr, 34vmax)
-  );
-  transition: --lx 1s, --ly 1s;
 }
 
 /* ── HUD ────────────────────────────────────────────── */
