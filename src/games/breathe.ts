@@ -53,6 +53,7 @@ export const createBreathe: GameFactory = (ctx, onDone) => {
 
   return {
     start() {
+      hint.poke();
       hero.set('idle');
       hero.attach(chest);
       ctx.controls.append(counter);

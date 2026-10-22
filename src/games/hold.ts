@@ -71,6 +71,7 @@ export const createHold: GameFactory = (ctx, onDone) => {
 
   return {
     start() {
+      hint.poke();
       hero.set('hang');
       hero.attach(target);
       ctx.controls.append(toggle, meter);

@@ -7,6 +7,8 @@ export interface StripSpec {
   frames: number;
   fps: number;
   loop: boolean;
+  /** feet — ноги на y=236 (по умолчанию); top — руки на y=16, для висящих состояний */
+  align?: 'feet' | 'top';
 }
 export type HeroSpec = Partial<Record<HeroState, StripSpec>>;
 
@@ -39,6 +41,7 @@ export class Hero {
   private token = 0;
   private _state: HeroState = 'idle';
   private onceDone: (() => void) | null = null;
+  private offMotion: () => void;
 
   constructor(
     private spec: HeroSpec,
@@ -54,7 +57,7 @@ export class Hero {
     this.svg.classList.add('hero__svg', 'boil');
     this.svg.setAttribute('aria-hidden', 'true');
     this.el.append(this.sprite, this.svg);
-    motion.onChange(() => this.replay());
+    this.offMotion = motion.onChange(() => this.replay());
   }
 
   get state() {
@@ -86,10 +89,23 @@ export class Hero {
     this.el.style.setProperty('--flip', left ? '-1' : '1');
   }
 
-  /** Ставит ноги героя в точку (x, y) в процентах от родителя. */
-  place(x: number, y: number) {
+  /** Ставит героя в точку (x, y) в процентах от родителя: ногами или, если висит, руками. */
+  place(x: number, y: number, anchor: 'feet' | 'hands' = 'feet') {
+    this.el.classList.toggle('is-anchor-hands', anchor === 'hands');
     this.el.style.left = `${x}%`;
     this.el.style.top = `${y}%`;
+  }
+
+  /** Где герой сейчас, в процентах от родителя. */
+  get position(): [number, number] {
+    return [parseFloat(this.el.style.left) || 50, parseFloat(this.el.style.top) || 78];
+  }
+
+  destroy() {
+    this.token++;
+    this.stop();
+    this.offMotion();
+    this.el.remove();
   }
 
   private stripFor(state: HeroState): HeroState {

@@ -80,6 +80,7 @@ async function main() {
   if (!Array.isArray(credits)) err('credits.json: должен быть массив');
   for (const k of ['prev', 'next']) if (!isStr(webring?.[k]?.title) || !isStr(webring?.[k]?.url)) err(`webring.json: нужен ${k}.title и ${k}.url`);
   for (const [k, v] of Object.entries(hero)) if (!(v.frames >= 1 && v.fps > 0 && typeof v.loop === 'boolean')) err(`hero.json: ${k} — нужны frames, fps, loop`);
+  for (const [k, v] of Object.entries(hero)) if (v.align !== undefined && v.align !== 'feet' && v.align !== 'top') err(`hero.json: ${k}.align — feet или top`);
 
   scanTodo('floors', floors);
   scanTodo('scenes', scenes);

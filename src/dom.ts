@@ -1,13 +1,15 @@
 type Attrs = Record<string, string | number | boolean | undefined>;
+type TagOf<T extends string> = T extends `${infer N}.${string}` ? N : T;
+type ElementOf<T extends string> = TagOf<T> extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagOf<T>] : HTMLElement;
 
 /** Маленький помощник для DOM: h('button.btn', { type: 'button' }, 'текст'). */
-export function h<K extends keyof HTMLElementTagNameMap>(
-  tag: `${K}${string}`,
+export function h<T extends string>(
+  tag: T,
   attrs: Attrs = {},
   ...children: (Node | string | null | undefined | false)[]
-): HTMLElementTagNameMap[K] {
+): ElementOf<T> {
   const [name, ...classes] = tag.split('.');
-  const el = document.createElement(name as K);
+  const el = document.createElement(name) as ElementOf<T>;
   if (classes.length) el.className = classes.join(' ');
   for (const [k, v] of Object.entries(attrs)) {
     if (v === undefined || v === false) continue;

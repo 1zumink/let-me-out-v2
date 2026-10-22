@@ -42,6 +42,7 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
 
   return {
     start() {
+      hint.poke();
       hero.set('hang');
       hero.attach(hands);
       ctx.controls.append(button);

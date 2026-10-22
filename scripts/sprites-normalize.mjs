@@ -5,6 +5,7 @@ import { readFile, mkdir, access } from 'node:fs/promises';
 
 const FRAME = 256;
 const FEET_Y = 236;
+const HANDS_Y = 16; // висящие состояния (align: "top") выравниваются по рукам у верха кадра
 const HERO_H = 200; // высота стоящего героя (idle) в кадре
 const RAW = 'raw/hero';
 const OUT = 'public/assets/hero';
@@ -130,10 +131,11 @@ async function measure(state) {
 
 async function build(state, scaleBase) {
   const n = hero[state].frames;
+  const top = hero[state].align === 'top';
   const { frames } = await measure(state);
   const maxH = Math.max(...frames.filter(Boolean).map((f) => f.height));
   const maxW = Math.max(...frames.filter(Boolean).map((f) => f.width));
-  const scale = Math.min(scaleBase, (FEET_Y - 4) / maxH, (FRAME - 8) / maxW);
+  const scale = Math.min(scaleBase, (top ? FRAME - HANDS_Y - 4 : FEET_Y - 4) / maxH, (FRAME - 8) / maxW);
   const layers = [];
   for (let i = 0; i < n; i++) {
     const f = frames[i];
@@ -142,13 +144,13 @@ async function build(state, scaleBase) {
     const h = Math.max(1, Math.round(f.height * scale));
     const input = await sharp(f.rgba, { raw: { width: f.width, height: f.height, channels: 4 } })
       .resize(w, h, { kernel: 'lanczos3' }).png().toBuffer();
-    layers.push({ input, left: i * FRAME + Math.round((FRAME - w) / 2), top: FEET_Y - h });
+    layers.push({ input, left: i * FRAME + Math.round((FRAME - w) / 2), top: top ? HANDS_Y : FEET_Y - h });
   }
   const buf = await sharp({ create: { width: n * FRAME, height: FRAME, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
     .composite(layers).png().toBuffer();
   await sharp(buf).png({ compressionLevel: 9 }).toFile(`${OUT}/${state}.png`);
   await sharp(buf).webp({ quality: 85, alphaQuality: 90 }).toFile(`${OUT}/${state}.webp`);
-  console.log(`  ${state}: ${n} кадров, масштаб ${scale.toFixed(3)}`);
+  console.log(`  ${state}: ${n} кадров, масштаб ${scale.toFixed(3)}${top ? ', по рукам' : ''}`);
 }
 
 await mkdir(OUT, { recursive: true });

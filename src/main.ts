@@ -1,5 +1,6 @@
 import './styles/base.css';
 import './styles/layers.css';
+import './styles/games.css';
 import { floors, heroSpec, ui, webring } from './data';
 import { createStore, type Lap } from './state';
 import { storage, LAP_KEY } from './storage';
@@ -23,7 +24,12 @@ const CAMERA_MS = 1400;
 const seed = seedFromUrl(location.search);
 document.documentElement.dataset.seed = String(seed);
 const rng = mulberry32(seed);
-const store = createStore({ lap: (storage.get(LAP_KEY) === '2' ? 2 : 1) as Lap });
+// ?floor=N — начать с этажа N (для отладки и показа)
+const floorParam = Number(new URLSearchParams(location.search).get('floor'));
+const store = createStore({
+  lap: (storage.get(LAP_KEY) === '2' ? 2 : 1) as Lap,
+  floor: Number.isInteger(floorParam) && floorParam > 0 && floorParam < floors.length ? floorParam : 0,
+});
 
 // ── сцена ─────────────────────────────────────────────
 const app = document.getElementById('app')!;
@@ -82,7 +88,6 @@ function makeHint(text: string, signal: AbortSignal): Hint {
     timer = window.setTimeout(() => (hintEl.textContent = text), HINT_MS);
   };
   signal.addEventListener('abort', hide, { once: true });
-  poke();
   return { poke, stop: hide };
 }
 
@@ -102,6 +107,10 @@ function makeCtx(slot: HTMLElement, index: number, ac: AbortController): FloorCt
     after(ms, fn) {
       const id = window.setTimeout(() => !signal.aborted && fn(), ms);
       signal.addEventListener('abort', () => clearTimeout(id), { once: true });
+    },
+    on(action, fn) {
+      const off = input.on(action, fn);
+      signal.addEventListener('abort', () => off(), { once: true });
     },
     say: (lines) => bubbles.say(lines, hero, signal),
     lines: (key) => data.lines[lap === 2 ? 'lap2' : 'lap1'][key] ?? [],
@@ -148,8 +157,13 @@ async function enterFloor({ travel }: { travel: boolean }) {
   floor.arrive?.();
   await ctx.say(ctx.lines('enter'));
   if (ac.signal.aborted) return;
-  if (data.game && store.phase('play')) floor.start();
-  else ctx.done();
+  if (data.game) store.phase('play');
+  floor.start();
+}
+
+/** Картинки следующего этажа грузим заранее, пока игрок стоит на этом. */
+function prefetch(index: number) {
+  for (const item of floors[index]?.collage ?? []) new Image().src = import.meta.env.BASE_URL + item.src;
 }
 
 async function onDone(index: number, ac: AbortController) {
@@ -157,6 +171,7 @@ async function onDone(index: number, ac: AbortController) {
   const data = floors[index];
   current?.floor.stop();
   controls.replaceChildren();
+  prefetch(index + 1);
   if (current) await current.ctx.say(current.ctx.lines('done'));
   if (ac.signal.aborted) return;
   if (data.final) {

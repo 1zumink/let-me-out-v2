@@ -1,0 +1,131 @@
+/* якорь «за руки»: висящие ленты выровнены по рукам на y=16 из 256 */
+.hero.is-anchor-hands {
+  translate: -50% -7%;
+}
+.hero.is-slow {
+  transition-duration: 2.4s;
+}
+.hero.is-floating {
+  transition-duration: 1.4s;
+}
+.hero.is-dragging {
+  transition: none;
+}
+.hero.is-ghost-ctl {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 40%;
+}
+.hero.is-ghost-ctl:active {
+  cursor: grabbing;
+}
+
+/* комната */
+.room {
+  position: absolute;
+  inset: 0;
+}
+.room-item {
+  position: absolute;
+  width: max(44px, calc(var(--w) * 1vmin));
+  translate: -50% -100%;
+  rotate: var(--rot, 0deg);
+}
+.room-item__btn {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.room-item__img,
+.shard img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.room-item__img {
+  filter: grayscale(1) brightness(0.6) contrast(1.1) drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff);
+}
+.room-item__btn:focus-visible {
+  outline-offset: 6px;
+}
+.room-item__btn.is-shaking {
+  animation: shake 0.18s steps(6) both;
+}
+.room-item__btn.is-bare .room-item__img {
+  filter: grayscale(1) brightness(0.6) contrast(1.1);
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-2px, 1px) rotate(-1deg);
+  }
+  40% {
+    transform: translate(2px, -1px) rotate(1deg);
+  }
+  60% {
+    transform: translate(-1px, -1px);
+  }
+  80% {
+    transform: translate(1px, 1px) rotate(0.5deg);
+  }
+}
+.shard {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.shard img {
+  filter: grayscale(1) brightness(0.6) contrast(1.1);
+}
+/* светлое пятно-силуэт на месте убранной вещи */
+.room-item__spot {
+  position: absolute;
+  inset: 0;
+  background: var(--light);
+  opacity: 0.3;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+/* крылья: левая и правая зоны тапа */
+.flap-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.flap-zone--left {
+  left: 0;
+}
+.flap-zone--right {
+  right: 0;
+}
+
+/* щель света для призрака */
+.ghost-exit {
+  position: absolute;
+  width: 18px;
+  height: 64px;
+  translate: -50% -50%;
+  rotate: 8deg;
+  border-radius: 40%;
+  background: radial-gradient(ellipse at center, var(--light), rgb(242 230 201 / 0) 70%);
+  box-shadow: 0 0 40px 10px rgb(242 230 201 / 0.25);
+}
