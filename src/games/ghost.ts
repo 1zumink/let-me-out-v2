@@ -1,41 +1,76 @@
-// «Без тела» (этаж 6): призрак водится drag-ом, стрелками или тапом в точку; кнопка «вернуться в тело».
+// «Без тела» (этаж 6): читатель ведёт призрака — drag, тап в точку или стрелки. Сквозь стены можно,
+// взять ничего нельзя. После трёх любых попыток или по «вернуться в тело» — обратно.
 import { h } from '../dom';
 import { focus } from '../a11y';
-import { heroSpec } from '../data';
+import { heroSpec, type Line } from '../data';
+import { memory } from '../memory';
 import { Hero } from '../hero/hero';
 import { scope, type GameFactory } from './common';
 
-const STEP = 4;
-const EXIT: [number, number] = [72, 24];
-const REACH = 8;
+const STEP = 5;
+const WALL = 12; // линия стен, %
+const HIGH = 22;
+const NEAR = 9;
+const TRIES = 3;
+export const GHOST_PROPS = {
+  rope: [64, 40] as [number, number], // где висит верёвка
+  jar: [40, 78] as [number, number], // где стоит банка со светом (если её забрали из сцены S3)
+};
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
 export const createGhost: GameFactory = (ctx, onDone) => {
   const s = scope(ctx);
   const { hero, ui } = ctx;
+  const events = ctx.get<Record<string, Line[]>>('events') ?? {};
+  const hasJar = memory.get().jar;
+  const tried = new Set<string>();
   let ghost: Hero | null = null;
   let pos: [number, number] = [0, 0];
   let body: [number, number] = [0, 0];
+  let leftBody = false;
   let finished = false;
+  let speaking = false;
   const hint = ctx.hint();
 
-  const crack = s.own(h('div.ghost-exit', { 'aria-hidden': 'true' }));
-  crack.style.left = `${EXIT[0]}%`;
-  crack.style.top = `${EXIT[1]}%`;
-  ctx.el.append(crack);
   const back = s.own(h('button.btn', { type: 'button' }, ui.ghostBack));
+  const call = s.own(h('button.btn', { type: 'button' }, ui.ghostCall));
+
+  const near = (p: [number, number]) => Math.hypot(pos[0] - p[0], pos[1] - p[1]) < NEAR;
+
+  const attempt = async (key: string) => {
+    // пока призрак договаривает, новое касание не засчитывается — его можно повторить
+    if (finished || tried.has(key) || speaking) return;
+    tried.add(key);
+    if (events[key]) {
+      speaking = true;
+      await ctx.say(events[key]);
+      speaking = false;
+    }
+    // «первое движение» — не попытка; попытки — стена, верёвка, тело, банка, позвать, высота
+    const attempts = [...tried].filter((k) => k !== 'move').length;
+    if (attempts >= TRIES) leave();
+  };
 
   const move = (x: number, y: number, mode: 'drag' | 'float' | 'step') => {
     if (!ghost || finished) return;
     hint.poke();
-    const nx = clamp(x, 14, 86);
-    const ny = clamp(y, 16, 88);
+    // сквозь стены можно — почти до края экрана
+    const nx = clamp(x, 4, 96);
+    const ny = clamp(y, 12, 90);
     ghost.el.classList.toggle('is-dragging', mode === 'drag');
     ghost.el.classList.toggle('is-floating', mode === 'float');
     ghost.flip(nx < pos[0]);
     pos = [nx, ny];
     ghost.place(nx, ny);
-    if (Math.hypot(nx - EXIT[0], ny - EXIT[1]) < REACH) leave('out');
+    // чем выше, тем бледнее линия
+    ghost.el.style.setProperty('--fade', String(clamp((ny - 10) / 60, 0.25, 1)));
+    attempt('move');
+    if (nx < WALL || nx > 100 - WALL) attempt('wall');
+    if (near(GHOST_PROPS.rope)) attempt('ledge');
+    if (leftBody && near(body)) attempt('body');
+    if (hasJar && near(GHOST_PROPS.jar)) attempt('jar');
+    if (ny < HIGH) attempt('high');
+    if (!near(body)) leftBody = true;
   };
 
   const toPercent = (e: PointerEvent): [number, number] => {
@@ -43,21 +78,27 @@ export const createGhost: GameFactory = (ctx, onDone) => {
     return [((e.clientX - r.left) / r.width) * 100, ((e.clientY - r.top) / r.height) * 100 + 8];
   };
 
-  const leave = (how: 'out' | 'back') => {
+  const leave = async () => {
     if (finished) return;
     finished = true;
     hint.stop();
     back.remove();
-    if (how === 'back' && ghost) {
+    call.remove();
+    while (speaking) await ctx.wait(200);
+    await ctx.say(ctx.lines('end'));
+    if (s.signal.aborted) return;
+    // призрак входит в тело
+    if (ghost) {
       ghost.el.classList.add('is-floating');
       ghost.place(...body);
-    }
-    ctx.after(how === 'back' ? 1300 : 600, () => {
-      ghost?.destroy();
+      await ctx.wait(1400);
+      ghost.destroy();
       ghost = null;
-      hero.set('idle');
-      ctx.say(ctx.lines(how)).then(() => !s.signal.aborted && onDone());
-    });
+    }
+    // тихое последействие: один экран без событий
+    await ctx.wait(1800);
+    await ctx.say(ctx.lines('after'));
+    if (!s.signal.aborted) onDone();
   };
 
   return {
@@ -74,9 +115,9 @@ export const createGhost: GameFactory = (ctx, onDone) => {
       hero.el.after(g);
       ghost.place(...body);
       ghost.set('ghost');
+      ctx.speaker('ghost', g);
       hero.set('idle');
-      ctx.after(60, () => move(pos[0], pos[1], 'float'));
-      ctx.light(EXIT[0], EXIT[1] + 10, 40);
+      ctx.after(60, () => ghost && (ghost.el.classList.add('is-floating'), ghost.place(...pos)));
 
       let dragging = false;
       g.addEventListener(
@@ -97,14 +138,16 @@ export const createGhost: GameFactory = (ctx, onDone) => {
       };
       g.addEventListener('pointerup', drop, { signal: s.signal });
       g.addEventListener('pointercancel', drop, { signal: s.signal });
-      // тап в пустое место — призрак плывёт туда
+      // тап в точку — призрак плывёт туда
       ctx.el.addEventListener('pointerdown', (e) => move(...toPercent(e), 'float'), { signal: s.signal });
       ctx.on('left', () => move(pos[0] - STEP, pos[1], 'step'));
       ctx.on('right', () => move(pos[0] + STEP, pos[1], 'step'));
       ctx.on('up', () => move(pos[0], pos[1] - STEP, 'step'));
       ctx.on('down', () => move(pos[0], pos[1] + STEP, 'step'));
-      ctx.controls.append(back);
-      back.addEventListener('click', () => leave('back'), { signal: s.signal });
+      ctx.controls.append(call, back);
+      // позвать: реплика появляется и сразу исчезает, не оставляя следа
+      call.addEventListener('click', () => (hint.poke(), attempt('call')), { signal: s.signal });
+      back.addEventListener('click', leave, { signal: s.signal });
       focus(g);
     },
     stop() {

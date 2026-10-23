@@ -1,4 +1,4 @@
-// Экран выхода: текст, веб-ринг и кредиты. Открывается кнопкой «уйти».
+// Экран выхода и финальный экран: «закрыть», «ещё раз с начала», веб-ринг, источники и кредиты.
 import { h } from '../dom';
 import { focus } from '../a11y';
 import type { Ui, Webring } from '../data';
@@ -7,20 +7,27 @@ import { Credits } from './Credits';
 export function ExitScreen(
   ui: Ui,
   webring: Webring,
-  { onBack, onRestart }: { onBack: () => void; onRestart: () => void },
+  { onClose, onAgain, onRestart }: { onClose: () => void; onAgain: () => void; onRestart: () => void },
 ) {
-  const title = h('h2.exit__title', { id: 'exit-title', tabindex: '-1' }, ui.exitTitle);
-  const back = h('button.btn', { type: 'button' }, ui.back);
-  const restart = h('button.btn', { type: 'button' }, ui.restart);
-  back.addEventListener('click', onBack);
+  const title = h('h2.exit__title', { id: 'exit-title', tabindex: '-1' }, ui.intro.title);
+  const close = h('button.btn', { type: 'button' }, ui.close);
+  const again = h('button.btn', { type: 'button' }, ui.again);
+  const restart = h('button.btn.btn--small', { type: 'button' }, ui.restart);
+  close.addEventListener('click', onClose);
+  again.addEventListener('click', onAgain);
   restart.addEventListener('click', onRestart);
 
-  const ring = h(
-    'nav.webring',
-    { 'aria-label': ui.webring },
-    h('a.webring__link', { href: webring.prev.url, rel: 'prev' }, h('span.webring__dir', {}, `← ${ui.webringPrev}`), h('span', {}, webring.prev.title)),
-    h('a.webring__link', { href: webring.next.url, rel: 'next' }, h('span.webring__dir', {}, `${ui.webringNext} →`), h('span', {}, webring.next.title)),
-  );
+  const link = (dir: 'prev' | 'next') => {
+    const w = webring[dir];
+    const label = dir === 'prev' ? `← ${ui.webringPrev}` : `${ui.webringNext} →`;
+    return h(
+      'a.webring__link',
+      { href: w.url, rel: dir },
+      h('span.webring__dir', {}, label),
+      h('span.webring__title', {}, w.title),
+      w.about ? h('span.webring__about', {}, w.about) : null,
+    );
+  };
 
   const el = h(
     'section.exit',
@@ -29,9 +36,8 @@ export function ExitScreen(
       'div.exit__inner',
       {},
       title,
-      ...ui.exitText.map((p) => h('p.exit__text', {}, p)),
-      h('div.exit__actions', {}, back),
-      ring,
+      h('div.exit__actions', {}, close, again),
+      h('nav.webring', { 'aria-label': ui.webring }, link('prev'), link('next')),
       Credits(ui),
       h('footer.exit__footer', {}, restart),
     ),

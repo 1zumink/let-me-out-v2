@@ -27,11 +27,13 @@ export function WallQuote(q: Quote, { x, y, rng }: { x: number; y: number; rng: 
     'figure.wall-quote',
     {},
     text,
-    h('figcaption.wall-quote__by', {}, `— ${q.author}`, Footnote(q)),
+    h('figcaption.wall-quote__by', {}, `— ${q.by ?? q.author}`, Footnote(q)),
   );
   el.style.left = `${x}%`;
   el.style.top = `${y}%`;
   el.style.setProperty('--tilt', `${between(rng, -8, 6).toFixed(1)}deg`);
+  // сноски длинные — чем больше слов, тем мельче почерк
+  el.classList.toggle('wall-quote--long', words.length > 24);
   current = el;
   return {
     el,

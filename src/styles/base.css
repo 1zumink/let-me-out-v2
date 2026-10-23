@@ -561,3 +561,112 @@ a {
   font-size: 16px;
   padding: 4px 12px;
 }
+
+/* ── первый экран ───────────────────────────────────── */
+.intro {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 72px var(--gutter) 32px;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 100%, var(--ink-2), var(--ink) 70%);
+  overflow-y: auto;
+}
+.intro__title {
+  margin: 0;
+  font-size: clamp(40px, 10vw, 84px);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+.intro__lead,
+.intro__note {
+  margin: 0;
+  max-width: 34ch;
+}
+.intro__note {
+  color: var(--muted);
+}
+.intro .btn--up {
+  margin-top: 16px;
+}
+
+/* облачка: призрак бледнее, эхо и голоса снизу — мельче */
+.bubble--pale {
+  color: #3a3936;
+  background: rgb(232 228 220 / 0.62);
+}
+.bubble--pale::after {
+  border-top-color: rgb(232 228 220 / 0.62);
+}
+.bubble--small {
+  font-size: 16px;
+  padding: 6px 12px;
+}
+
+/* сайд-сцены: диалог с говорящими */
+.scene__line {
+  margin: 0 0 6px;
+}
+.scene__who {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.scene__line--small {
+  font-size: 15px;
+}
+.scene__line--sign .scene__text {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+.scene__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.scene__phone {
+  position: static;
+  display: block;
+  translate: none;
+  width: 56px;
+  margin: 0 auto 6px;
+  animation: ring 1.2s steps(4) infinite;
+}
+@keyframes ring {
+  0%,
+  60%,
+  100% {
+    rotate: 0deg;
+  }
+  70% {
+    rotate: -8deg;
+  }
+  80% {
+    rotate: 8deg;
+  }
+}
+.is-reduced .scene__phone,
+.is-paused .scene__phone {
+  animation: none;
+}
+
+.webring__title {
+  font-size: 18px;
+}
+.webring__about {
+  font-size: 15px;
+  color: var(--muted);
+}
+.credits h3,
+.credits h4 {
+  font-weight: 400;
+}

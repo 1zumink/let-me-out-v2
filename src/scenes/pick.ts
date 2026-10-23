@@ -7,24 +7,45 @@ export const SCENE_CHANCE = 0.4;
 export interface PickInput {
   scenes: Scene[];
   lap: number;
-  /** сцены, уже показанные в этом круге */
-  seen: string[];
-  /** на этом этаже сцена уже была */
+  /** id текущего места */
+  place: string;
+  /** порядок мест снизу вверх */
+  order: string[];
+  /** сцены, показанные в этом круге, и где */
+  shownAt: Record<string, string>;
+  /** сцены, увиденные за все круги */
+  seenEver: string[];
   floorHadScene: boolean;
   rng: Rng;
 }
 
-/** Сцены, которые можно показать сейчас: свой круг, не виденные, вторая часть пары — только после первой. */
-export function available({ scenes, lap, seen }: Pick<PickInput, 'scenes' | 'lap' | 'seen'>): Scene[] {
-  return scenes.filter((s) => s.laps.includes(lap) && !seen.includes(s.id) && (!s.pairOf || seen.includes(s.pairOf)));
+const before = (order: string[], a: string, b: string) => order.indexOf(a) < order.indexOf(b);
+
+/** Сцены, которые можно показать сейчас. */
+export function available({ scenes, lap, place, order, shownAt, seenEver }: Omit<PickInput, 'rng' | 'floorHadScene'>): Scene[] {
+  const prev = order[order.indexOf(place) - 1];
+  return scenes.filter((s) => {
+    if (!s.laps.includes(lap) || !s.where.includes(place) || s.id in shownAt) return false;
+    if (s.after && !before(order, s.after, place)) return false;
+    if (!s.pairOf) return true;
+    // отзвук через круг: первая часть была когда-то раньше
+    if (s.crossLap) return seenEver.includes(s.pairOf) && !(s.pairOf in shownAt);
+    // вторая часть — только после первой в этом круге; «soon» — строго на следующей остановке
+    if (!(s.pairOf in shownAt)) return false;
+    return s.soon ? shownAt[s.pairOf] === prev : true;
+  });
 }
 
 export function pickScene(input: PickInput): Scene | null {
   if (input.floorHadScene) return null;
-  if (input.rng() >= SCENE_CHANCE) return null;
   const pool = available(input);
-  if (!pool.length) return null;
-  return pool[Math.floor(input.rng() * pool.length)];
+  // вторая часть «табличка» приходит без жребия — иначе шутка не сработает
+  const due = pool.find((s) => s.soon);
+  if (due) return due;
+  if (input.rng() >= SCENE_CHANCE) return null;
+  const rest = pool.filter((s) => !s.soon);
+  if (!rest.length) return null;
+  return rest[Math.floor(input.rng() * rest.length)];
 }
 
 export const sceneDuration = (words: number) => 4000 + 400 * words;

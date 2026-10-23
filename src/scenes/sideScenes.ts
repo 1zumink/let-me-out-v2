@@ -1,40 +1,109 @@
-// Движок сайд-сцен S1–S12: только в фазе stop, не больше одной на этаж, каждая — раз за круг.
+// Движок сайд-сцен S1–S12: на полях, только на остановках, не больше одной на место, каждая — раз за круг.
 import { h, words } from '../dom';
 import { announce, motion } from '../a11y';
-import type { Scene, Ui } from '../data';
+import { places, type Scene, type SceneStep, type Ui } from '../data';
+import { memory } from '../memory';
 import type { Rng } from '../rng';
 import type { Store } from '../state';
 import { Creature, type CreatureKind } from '../ui/Creature';
 import { pickScene, sceneDuration } from './pick';
 
+const order = places.map((p) => p.id);
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function phone() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 64 48');
+  svg.setAttribute('class', 'creature scene__phone');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = '<path d="M14 18 Q32 6 50 18 L46 24 L40 21 L40 17 Q32 14 24 17 L24 21 L18 24 Z"/><path d="M20 26 L44 26 L48 42 L16 42 Z"/><circle cx="32" cy="34" r="4"/>';
+  return svg;
+}
+
 export function createSideScenes({ layer, store, scenes, rng, ui }: { layer: HTMLElement; store: Store; scenes: Scene[]; rng: Rng; ui: Ui }) {
-  const floorsWithScene = new Set<string>();
+  let shownAt: Record<string, string> = {};
+  const placesWithScene = new Set<string>();
   let open: { close: () => void } | null = null;
 
   function show(scene: Scene) {
     const ac = new AbortController();
+    const opts = { signal: ac.signal };
     const close = h('button.scene__close', { type: 'button', 'aria-label': ui.close }, '×');
-    const text = h('p.scene__text', {}, scene.text);
-    const card = h('aside.scene', { 'aria-label': scene.id }, close, text);
-    if (scene.creature) card.prepend(Creature(scene.creature as CreatureKind, { x: 50, y: 50, size: 72, rng, signal: ac.signal }));
+    const body = h('div.scene__body');
+    const card = h('aside.scene', { 'aria-label': scene.title }, close, body);
+    if (scene.creature) card.insertBefore(Creature(scene.creature as CreatureKind, { x: 50, y: 50, size: 72, rng, signal: ac.signal }), body);
+    if (scene.visual === 'phone') card.insertBefore(phone(), body);
     layer.append(card);
-    announce(scene.text);
     requestAnimationFrame(() => card.classList.add('is-in'));
 
-    // таймер стоит, пока на сцене фокус или наведение (и пока анимации на паузе)
-    let left = sceneDuration(words(scene.text));
+    // таймер: 4 с + 0,4 с на слово видимого текста; стоит при фокусе, наведении и паузе анимаций
+    let left = 0;
     let hover = false;
     let focused = false;
+    let pending: { otherwise?: SceneStep[]; buttons: HTMLElement } | null = null;
+    const grow = (text: string) => (left += sceneDuration(words(text)) - (left > 0 ? 4000 : 0));
+
+    const render = (steps: SceneStep[]) => {
+      let delay = 0;
+      for (const step of steps) {
+        if ('choice' in step) {
+          const buttons = h('div.scene__choices');
+          for (const opt of step.choice) {
+            const b = h('button.btn.btn--small', { type: 'button' }, opt.label);
+            b.addEventListener(
+              'click',
+              () => {
+                buttons.remove();
+                pending = null;
+                if (opt.effect === 'jar') memory.set({ jar: true });
+                render(opt.steps);
+                if (!opt.steps.length) left = Math.min(left, 1500);
+              },
+              opts,
+            );
+            buttons.append(b);
+          }
+          body.append(buttons);
+          pending = { otherwise: step.otherwise, buttons };
+          grow(step.choice.map((c) => c.label).join(' '));
+          return;
+        }
+        const line = h(
+          'p.scene__line',
+          {},
+          step.who ? h('span.scene__who', {}, step.who) : null,
+          h('span.scene__text', {}, step.text),
+        );
+        line.classList.toggle('scene__line--small', !!step.small);
+        line.classList.toggle('scene__line--sign', !!step.sign);
+        delay += step.delayMs ?? 0;
+        if (delay && !motion.reduced()) {
+          line.hidden = true;
+          window.setTimeout(() => !ac.signal.aborted && ((line.hidden = false), announce(step.text)), delay);
+        } else announce(`${step.who ? `${step.who}: ` : ''}${step.text}`);
+        body.append(line);
+        grow(step.text);
+      }
+    };
+    render(scene.steps);
+
     let last = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       if (!hover && !focused && !motion.paused()) left -= now - last;
       last = now;
-      if (left <= 0) return dismiss();
+      if (left <= 0) {
+        // читатель не выбрал — сцена договаривает «иначе» (S1: «Ладно, я своим темпом»)
+        if (pending?.otherwise) {
+          pending.buttons.remove();
+          const rest = pending.otherwise;
+          pending = null;
+          render(rest);
+        } else return dismiss();
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    const opts = { signal: ac.signal };
     card.addEventListener('pointerenter', () => (hover = true), opts);
     card.addEventListener('pointerleave', () => (hover = false), opts);
     card.addEventListener('focusin', () => (focused = true), opts);
@@ -47,9 +116,8 @@ export function createSideScenes({ layer, store, scenes, rng, ui }: { layer: HTM
       cancelAnimationFrame(raf);
       const hadFocus = card.contains(document.activeElement);
       card.classList.remove('is-in');
-      const remove = () => card.remove();
-      if (motion.reduced()) remove();
-      else window.setTimeout(remove, 400);
+      if (motion.reduced()) card.remove();
+      else window.setTimeout(() => card.remove(), 400);
       if (open?.close === dismiss) open = null;
       if (hadFocus) document.querySelector<HTMLElement>('.btn--up:not([hidden])')?.focus();
     }
@@ -57,25 +125,37 @@ export function createSideScenes({ layer, store, scenes, rng, ui }: { layer: HTM
   }
 
   return {
-    /** Вызывается в фазе stop; сам решает, показывать ли сцену (шанс 0.4). */
-    maybeShow() {
+    /** Вызывается на остановке места; сам решает, показывать ли сцену. */
+    maybeShow(place: string) {
       const s = store.get();
       if (s.phase !== 'stop' || open) return;
-      const key = `${s.lap}:${s.floor}`;
-      const scene = pickScene({ scenes, lap: s.lap, seen: s.seenScenes, floorHadScene: floorsWithScene.has(key), rng });
-      floorsWithScene.add(key);
+      const key = `${s.lap}:${place}`;
+      const scene = pickScene({
+        scenes,
+        lap: s.lap,
+        place,
+        order,
+        shownAt,
+        seenEver: memory.get().seenEver,
+        floorHadScene: placesWithScene.has(key),
+        rng,
+      });
+      placesWithScene.add(key);
       if (!scene) return;
+      shownAt = { ...shownAt, [scene.id]: place };
       store.seeScene(scene.id);
+      memory.see(scene.id);
       show(scene);
     },
     close: () => open?.close(),
     get isOpen() {
       return open !== null;
     },
-    /** Новый круг: этажи снова могут получить сцену. */
+    /** Новый круг: места снова могут получить сцену. */
     reset() {
       open?.close();
-      floorsWithScene.clear();
+      placesWithScene.clear();
+      shownAt = {};
     },
   };
 }

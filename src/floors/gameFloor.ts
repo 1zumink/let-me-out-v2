@@ -1,10 +1,9 @@
-// Типовой этаж: силуэт, герой, игра из floors.json (или сценка), после игры — покой и надпись на стене.
+// Типовое место: силуэт, герой, игра из floors.json (или сценка), после игры — покой.
 import { games } from '../games';
 import type { Game } from '../games/common';
 import type { HeroState } from '../hero/hero';
-import { quotes } from '../data';
+import type { Line } from '../data';
 import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
-import { WallQuote } from '../ui/WallQuote';
 import type { Floor, FloorCtx } from './types';
 
 export interface GameFloorOptions {
@@ -18,36 +17,25 @@ export interface GameFloorOptions {
   world?: SilhouetteOptions;
   /** Свет при входе: x, y, радиус; по умолчанию — над героем. */
   light?: [number, number, number];
-  /** Где проявится цитата этажа. */
-  quoteAt?: [number, number];
   decorate?: (ctx: FloorCtx) => void;
-  /** Сценка для этажа без игры; должна вызвать ctx.done(). */
+  enterLines?: (ctx: FloorCtx) => Line[];
+  hasGame?: (ctx: FloorCtx) => boolean;
+  /** Сценка для места без игры; должна вызвать ctx.done(). */
   script?: (ctx: FloorCtx) => void;
+  rest?: (ctx: FloorCtx) => void;
 }
 
 export function gameFloor(opts: GameFloorOptions = {}): Floor {
   let ctx: FloorCtx;
   let game: Game | null = null;
-  let quote: ReturnType<typeof WallQuote> | null = null;
   const [x, y] = opts.heroAt ?? [50, 78];
-
-  const showQuote = () => {
-    const q = quotes.find((it) => it.id === ctx.data.quote);
-    if (!q) return;
-    const [qx, qy] = opts.quoteAt ?? [x > 50 ? 30 : 70, 34];
-    quote = WallQuote(q, { x: qx, y: qy, rng: ctx.rng });
-    ctx.el.append(quote.el);
-    // свет доходит до надписи — она проявляется
-    ctx.light(qx, qy, 30);
-    ctx.after(700, () => quote?.light());
-  };
 
   return {
     mount(c) {
       ctx = c;
       c.el.append(silhouette(c.rng, opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] }));
       opts.decorate?.(c);
-      const make = c.data.game ? games[c.data.game] : undefined;
+      const make = c.data.game && (opts.hasGame?.(c) ?? true) ? games[c.data.game] : undefined;
       game = make ? make(c, () => c.done()) : null;
     },
     arrive() {
@@ -58,6 +46,8 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
       if (opts.light) ctx.light(...opts.light);
       else ctx.light(x, opts.heroAnchor === 'hands' ? y + 14 : y - 18);
     },
+    enterLines: opts.enterLines ? () => opts.enterLines!(ctx) : undefined,
+    hasGame: () => game !== null,
     start() {
       if (game) game.start();
       else if (opts.script) opts.script(ctx);
@@ -71,11 +61,10 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
         ctx.light(opts.restAt[0], opts.restAt[1] - 18);
       }
       if (opts.restState) ctx.hero.set(opts.restState);
-      showQuote();
     },
+    rest: opts.rest ? () => opts.rest!(ctx) : undefined,
     unmount() {
       game?.stop();
-      quote?.remove();
       ctx.el.replaceChildren();
     },
   };

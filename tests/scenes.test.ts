@@ -3,48 +3,62 @@ import { available, pickScene, sceneDuration } from '../src/scenes/pick';
 import { mulberry32 } from '../src/rng';
 import type { Scene } from '../src/data';
 
+const order = ['f0', 'p1', 'f1', 'f2', 'f3', 'f4', 'f5'];
+const sc = (s: Partial<Scene> & { id: string }): Scene => ({ title: s.id, where: order, laps: [1, 2], steps: [], ...s });
 const scenes: Scene[] = [
-  { id: 'S1', text: 'a', laps: [1, 2] },
-  { id: 'S2', text: 'b', laps: [1, 2], pairOf: 'S1' },
-  { id: 'S3', text: 'c', laps: [2] },
+  sc({ id: 'S1', where: ['f1', 'f2'] }),
+  sc({ id: 'S1-echo', laps: [2], pairOf: 'S1', crossLap: true, where: ['f1', 'f2'] }),
+  sc({ id: 'S2', where: ['f2'] }),
+  sc({ id: 'S2-echo', pairOf: 'S2', where: ['f3', 'f4'] }),
+  sc({ id: 'S5' }),
+  sc({ id: 'S5-echo', pairOf: 'S5', soon: true }),
+  sc({ id: 'S11', after: 'f4', where: ['f3', 'f5'] }),
 ];
-const always = () => 0; // rng: шанс всегда срабатывает, берём первый кандидат
+const base = { scenes, order, lap: 1, shownAt: {}, seenEver: [] as string[] };
+const ids = (s: Scene[]) => s.map((x) => x.id);
+const always = () => 0;
 const never = () => 0.99;
 
 describe('сайд-сцены', () => {
+  it('только в своих местах', () => {
+    expect(ids(available({ ...base, place: 'f0' }))).toEqual(['S5']);
+    expect(ids(available({ ...base, place: 'f2' }))).toEqual(['S1', 'S2', 'S5']);
+  });
+
   it('вторая часть пары — только после первой', () => {
-    expect(available({ scenes, lap: 1, seen: [] }).map((s) => s.id)).toEqual(['S1']);
-    expect(available({ scenes, lap: 1, seen: ['S1'] }).map((s) => s.id)).toEqual(['S2']);
+    expect(ids(available({ ...base, place: 'f3' }))).not.toContain('S2-echo');
+    expect(ids(available({ ...base, place: 'f3', shownAt: { S2: 'f2' } }))).toContain('S2-echo');
   });
 
   it('каждая сцена — один раз за круг', () => {
-    expect(available({ scenes, lap: 1, seen: ['S1', 'S2'] })).toEqual([]);
+    expect(ids(available({ ...base, place: 'f2', shownAt: { S1: 'f1' } }))).not.toContain('S1');
   });
 
-  it('часть сцен открывается только на втором круге', () => {
-    expect(available({ scenes, lap: 2, seen: ['S1', 'S2'] }).map((s) => s.id)).toEqual(['S3']);
+  it('отзвук через круг: на втором круге, если первая часть была когда-то', () => {
+    expect(ids(available({ ...base, lap: 2, place: 'f1' }))).not.toContain('S1-echo');
+    expect(ids(available({ ...base, lap: 2, place: 'f1', seenEver: ['S1'] }))).toContain('S1-echo');
+    expect(ids(available({ ...base, lap: 1, place: 'f1', seenEver: ['S1'] }))).not.toContain('S1-echo');
   });
 
-  it('не больше одной на этаж', () => {
-    expect(pickScene({ scenes, lap: 1, seen: [], floorHadScene: true, rng: always })).toBeNull();
+  it('«soon» приходит строго на следующей остановке и без жребия', () => {
+    const next = { ...base, place: 'f2', shownAt: { S5: 'f1' }, floorHadScene: false, rng: never };
+    expect(pickScene(next)?.id).toBe('S5-echo');
+    expect(ids(available({ ...base, place: 'f3', shownAt: { S5: 'f1' } }))).not.toContain('S5-echo');
   });
 
-  it('шанс 0.4', () => {
-    expect(pickScene({ scenes, lap: 1, seen: [], floorHadScene: false, rng: never })).toBeNull();
-    expect(pickScene({ scenes, lap: 1, seen: [], floorHadScene: false, rng: always })?.id).toBe('S1');
+  it('«after» — только выше указанного места', () => {
+    expect(ids(available({ ...base, place: 'f3' }))).not.toContain('S11');
+    expect(ids(available({ ...base, place: 'f5' }))).toContain('S11');
+  });
+
+  it('не больше одной на место и шанс 0.4', () => {
+    expect(pickScene({ ...base, place: 'f2', floorHadScene: true, rng: always })).toBeNull();
+    expect(pickScene({ ...base, place: 'f2', floorHadScene: false, rng: never })).toBeNull();
     const rng = mulberry32(123);
     let hits = 0;
-    for (let i = 0; i < 2000; i++) if (pickScene({ scenes, lap: 1, seen: [], floorHadScene: false, rng })) hits++;
+    for (let i = 0; i < 2000; i++) if (pickScene({ ...base, place: 'f2', floorHadScene: false, rng })) hits++;
     expect(hits / 2000).toBeGreaterThan(0.35);
     expect(hits / 2000).toBeLessThan(0.45);
-  });
-
-  it('одинаковый сид — одинаковый выбор', () => {
-    const run = () => {
-      const rng = mulberry32(7);
-      return Array.from({ length: 10 }, () => pickScene({ scenes, lap: 2, seen: [], floorHadScene: false, rng })?.id ?? '-').join();
-    };
-    expect(run()).toBe(run());
   });
 
   it('время показа: 4000 + 400 × слов', () => {

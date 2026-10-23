@@ -45,6 +45,25 @@ export function createInput(root: HTMLElement) {
   });
   root.addEventListener('pointercancel', () => (start = null));
 
+  // «листай вверх»: колесо или трекпад вверх = одно действие up; инерция не проскакивает этажи
+  let wheel = 0;
+  let lockedUntil = 0;
+  root.addEventListener(
+    'wheel',
+    (e) => {
+      if (e.ctrlKey) return; // щипок на трекпаде — это масштаб
+      const now = performance.now();
+      if (now < lockedUntil) return;
+      wheel = e.deltaY > 0 ? 0 : wheel + e.deltaY;
+      if (wheel < -60) {
+        wheel = 0;
+        lockedUntil = now + 900;
+        fire('up', e);
+      }
+    },
+    { passive: true },
+  );
+
   return {
     on(action: Action, fn: (e?: Event) => void) {
       if (!handlers.has(action)) handlers.set(action, new Set());

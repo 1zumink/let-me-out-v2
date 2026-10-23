@@ -1,16 +1,8 @@
-// Проверка data/*.json перед dev и build. Цитата без source — ошибка сборки.
+// Проверка data/*.json перед dev и build. Цитата (сноска) без source — ошибка сборки.
 import { readFile } from 'node:fs/promises';
 
 const read = async (name) => JSON.parse(await readFile(new URL(`../data/${name}`, import.meta.url), 'utf8'));
-const errors = [];
-const todos = [];
-const err = (msg) => errors.push(msg);
 const isStr = (v) => typeof v === 'string' && v.trim() !== '';
-const scanTodo = (where, v) => {
-  if (typeof v === 'string' && v.includes('TODO')) todos.push(where);
-  else if (Array.isArray(v)) v.forEach((x, i) => scanTodo(`${where}[${i}]`, x));
-  else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => scanTodo(`${where}.${k}`, x));
-};
 
 export function validateQuotes(quotes) {
   const out = [];
@@ -24,12 +16,36 @@ export function validateQuotes(quotes) {
     if (!isStr(q?.text)) out.push(`${at}: нет text`);
     if (!isStr(q?.author)) out.push(`${at}: нет author`);
     if (!isStr(q?.source)) out.push(`${at}: нет source — без источника цитату показывать нельзя`);
-    for (const k of ['translator', 'page']) if (k in q && typeof q[k] !== 'string') out.push(`${at}: ${k} должен быть строкой`);
+    for (const k of ['translator', 'page', 'by', 'note']) if (k in q && typeof q[k] !== 'string') out.push(`${at}: ${k} должен быть строкой`);
   });
   return out;
 }
 
-export function validateScenes(scenes) {
+const isLine = (l) => isStr(l) || (l && typeof l === 'object' && isStr(l.text));
+function checkLines(at, v, out) {
+  if (Array.isArray(v)) {
+    v.forEach((l, i) => {
+      if (Array.isArray(l)) checkLines(`${at}[${i}]`, l, out);
+      else if (!isLine(l)) out.push(`${at}[${i}]: реплика — строка или { who, text }`);
+    });
+  } else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) checkLines(`${at}.${k}`, x, out);
+}
+
+function checkSteps(at, steps, out) {
+  if (!Array.isArray(steps)) return out.push(`${at}: steps должен быть массивом`);
+  steps.forEach((st, i) => {
+    const here = `${at}[${i}]`;
+    if (st && Array.isArray(st.choice)) {
+      st.choice.forEach((c, j) => {
+        if (!isStr(c.label)) out.push(`${here}.choice[${j}]: нет label`);
+        checkSteps(`${here}.choice[${j}].steps`, c.steps ?? [], out);
+      });
+      if (st.otherwise) checkSteps(`${here}.otherwise`, st.otherwise, out);
+    } else if (!st || !isStr(st.text)) out.push(`${here}: шаг — { who, text } или { choice }`);
+  });
+}
+
+export function validateScenes(scenes, placeIds = null) {
   const out = [];
   if (!Array.isArray(scenes)) return ['scenes.json: должен быть массив'];
   const ids = new Set(scenes.map((s) => s?.id));
@@ -39,55 +55,68 @@ export function validateScenes(scenes) {
     if (!isStr(s?.id)) out.push(`${at}: нет id`);
     else if (seen.has(s.id)) out.push(`${at}: повтор id`);
     seen.add(s?.id);
-    if (!isStr(s?.text)) out.push(`${at}: нет text`);
     if (!Array.isArray(s?.laps) || !s.laps.length || s.laps.some((l) => l !== 1 && l !== 2)) out.push(`${at}: laps — [1], [2] или [1, 2]`);
     if (s?.pairOf != null && !ids.has(s.pairOf)) out.push(`${at}: pairOf ссылается на несуществующую сцену ${s.pairOf}`);
     if (s?.pairOf === s?.id) out.push(`${at}: сцена не может быть парой самой себе`);
+    if (placeIds) {
+      if (!Array.isArray(s?.where) || !s.where.length) out.push(`${at}: нужен where — список мест`);
+      else for (const w of s.where) if (!placeIds.has(w)) out.push(`${at}: where — нет места ${w}`);
+      if (s?.after && !placeIds.has(s.after)) out.push(`${at}: after — нет места ${s.after}`);
+      checkSteps(`${at}.steps`, s?.steps, out);
+    }
   });
   return out;
 }
 
 const GAMES = ['hold', 'breathe', 'remove', 'flap', 'ghost', 'letgo'];
-export function validateFloors(floors, quoteIds) {
+export function validatePlaces(places, quoteIds) {
   const out = [];
-  if (!Array.isArray(floors) || !floors.length) return ['floors.json: нужен непустой массив'];
-  floors.forEach((f, i) => {
-    const at = `floors.json[${i}]`;
-    if (f.id !== i) out.push(`${at}: id должен быть ${i}`);
-    if (!isStr(f.module)) out.push(`${at}: нет module`);
-    if (f.game !== null && !GAMES.includes(f.game)) out.push(`${at}: неизвестная игра ${f.game}`);
-    for (const lap of ['lap1', 'lap2']) {
-      const l = f.lines?.[lap];
-      if (!l || !Array.isArray(l.enter) || !Array.isArray(l.done)) out.push(`${at}.lines.${lap}: нужны массивы enter и done`);
-    }
-    if (f.quote != null && !quoteIds.has(f.quote)) out.push(`${at}: цитата ${f.quote} не найдена в quotes.json (или у неё нет source)`);
-    (f.collage ?? []).forEach((c, j) => {
+  if (!Array.isArray(places) || !places.length) return ['floors.json: нужен непустой массив мест'];
+  const ids = new Set();
+  places.forEach((p, i) => {
+    const at = `floors.json[${i}]${p?.id ? ` (${p.id})` : ''}`;
+    if (!isStr(p.id)) out.push(`${at}: нет id`);
+    else if (ids.has(p.id)) out.push(`${at}: повтор id`);
+    ids.add(p.id);
+    if (p.kind !== 'floor' && p.kind !== 'passage') out.push(`${at}: kind — floor или passage`);
+    if (!isStr(p.label) || !isStr(p.module)) out.push(`${at}: нужны label и module`);
+    if (p.game !== null && !GAMES.includes(p.game)) out.push(`${at}: неизвестная игра ${p.game}`);
+    if (!p.lines?.lap1 || typeof p.lines.lap1 !== 'object') out.push(`${at}: нужен lines.lap1`);
+    else checkLines(`${at}.lines`, p.lines, out);
+    if (p.quote != null && !quoteIds.has(p.quote)) out.push(`${at}: сноска ${p.quote} не найдена в quotes.json (или у неё нет source)`);
+    (p.collage ?? []).forEach((c, j) => {
       if (!isStr(c.id) || !isStr(c.label) || !isStr(c.src)) out.push(`${at}.collage[${j}]: нужны id, label, src`);
     });
   });
-  if (!floors.some((f) => f.final)) out.push('floors.json: нет финального этажа (final: true)');
+  if (!places.some((p) => p.final)) out.push('floors.json: нет финального места (final: true)');
   return out;
 }
 
 async function main() {
-  const [floors, scenes, quotes, credits, webring, hero] = await Promise.all(
-    ['floors.json', 'scenes.json', 'quotes.json', 'credits.json', 'webring.json', 'hero.json'].map(read),
+  const errors = [];
+  const todos = [];
+  const scanTodo = (where, v) => {
+    if (typeof v === 'string' && v.includes('TODO')) todos.push(where);
+    else if (Array.isArray(v)) v.forEach((x, i) => scanTodo(`${where}[${i}]`, x));
+    else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => scanTodo(`${where}.${k}`, x));
+  };
+  const [places, scenes, quotes, credits, webring, hero, ui] = await Promise.all(
+    ['floors.json', 'scenes.json', 'quotes.json', 'credits.json', 'webring.json', 'hero.json', 'ui.json'].map(read),
   );
   errors.push(...validateQuotes(quotes));
   const quoteIds = new Set(quotes.filter((q) => isStr(q.source)).map((q) => q.id));
-  errors.push(...validateFloors(floors, quoteIds));
-  errors.push(...validateScenes(scenes));
-  if (!Array.isArray(credits)) err('credits.json: должен быть массив');
-  for (const k of ['prev', 'next']) if (!isStr(webring?.[k]?.title) || !isStr(webring?.[k]?.url)) err(`webring.json: нужен ${k}.title и ${k}.url`);
-  for (const [k, v] of Object.entries(hero)) if (!(v.frames >= 1 && v.fps > 0 && typeof v.loop === 'boolean')) err(`hero.json: ${k} — нужны frames, fps, loop`);
-  for (const [k, v] of Object.entries(hero)) if (v.align !== undefined && v.align !== 'feet' && v.align !== 'top') err(`hero.json: ${k}.align — feet или top`);
+  errors.push(...validatePlaces(places, quoteIds));
+  errors.push(...validateScenes(scenes, new Set(places.map((p) => p.id))));
+  if (!Array.isArray(credits)) errors.push('credits.json: должен быть массив');
+  for (const k of ['prev', 'next']) if (!isStr(webring?.[k]?.title) || !isStr(webring?.[k]?.url)) errors.push(`webring.json: нужен ${k}.title и ${k}.url`);
+  for (const [k, v] of Object.entries(hero)) {
+    if (!(v.frames >= 1 && v.fps > 0 && typeof v.loop === 'boolean')) errors.push(`hero.json: ${k} — нужны frames, fps, loop`);
+    if (v.align !== undefined && v.align !== 'feet' && v.align !== 'top') errors.push(`hero.json: ${k}.align — feet или top`);
+  }
+  for (const p of places) if (p.game && !isStr(ui.instructions?.[p.game])) errors.push(`ui.json: нет инструкции для игры ${p.game}`);
 
-  scanTodo('floors', floors);
-  scanTodo('scenes', scenes);
-  scanTodo('credits', credits);
-  scanTodo('webring', webring);
-
-  if (todos.length) console.warn(`data: ${todos.length} строк с TODO (ждут docs/text-v2.md)`);
+  for (const [name, v] of Object.entries({ floors: places, scenes, quotes, credits, webring, ui })) scanTodo(name, v);
+  if (todos.length) console.warn(`data: ${todos.length} строк с TODO:\n  ${todos.join('\n  ')}`);
   if (errors.length) {
     console.error('Ошибки в data/:\n  ' + errors.join('\n  '));
     process.exit(1);

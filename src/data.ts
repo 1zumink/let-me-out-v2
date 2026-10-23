@@ -1,4 +1,4 @@
-// Все тексты живут в data/*.json; здесь только типы и импорт.
+// Все тексты живут в data/*.json (источник — docs/text-v2.md); здесь только типы и импорт.
 import floorsJson from '../data/floors.json';
 import scenesJson from '../data/scenes.json';
 import quotesJson from '../data/quotes.json';
@@ -10,11 +10,8 @@ import type { HeroSpec } from './hero/hero';
 
 export type GameType = 'hold' | 'breathe' | 'remove' | 'flap' | 'ghost' | 'letgo';
 
-export interface Lines {
-  enter: string[];
-  done: string[];
-  [key: string]: string[];
-}
+/** Реплика: строка — говорит герой; объект — кто угодно. «…» отдельной строкой — пауза. */
+export type Line = string | { who?: string | null; text: string; pale?: boolean; small?: boolean; flash?: boolean };
 
 export interface CollageItem {
   id: string;
@@ -25,35 +22,55 @@ export interface CollageItem {
   y: number;
   w: number;
   rot?: number;
+  /** раскладка для узких экранов (до 560 px) */
+  xs?: { x: number; y: number; w: number };
 }
 
-export interface FloorData {
-  id: number;
+export interface Place {
+  id: string;
+  kind: 'floor' | 'passage';
+  label: string;
   module: string;
   game: GameType | null;
   final?: boolean;
-  hint?: string;
   quote?: string | null;
+  upLabel?: string;
   collage?: CollageItem[];
-  lines: { lap1: Lines; lap2: Lines };
+  params?: Record<string, unknown>;
+  lines: { lap1: Record<string, unknown>; lap2?: Record<string, unknown> };
 }
+
+export type SceneStep =
+  | { who?: string | null; text: string; small?: boolean; sign?: boolean; delayMs?: number }
+  | { choice: { label: string; effect?: string; steps: SceneStep[] }[]; otherwise?: SceneStep[] };
 
 export interface Scene {
   id: string;
-  text: string;
+  title: string;
+  where: string[];
   laps: number[];
   pairOf?: string | null;
-  creature?: string | null;
+  /** вторая часть пары может прийти на следующем круге */
+  crossLap?: boolean;
+  /** вторая часть пары приходит сразу на следующей остановке */
+  soon?: boolean;
+  /** только после этого места */
+  after?: string;
+  creature?: string;
+  visual?: string;
+  steps: SceneStep[];
 }
 
 export interface Quote {
   id: string;
   text: string;
   author: string;
+  by?: string;
   source: string;
   translator?: string;
   page?: string;
   strike?: string;
+  note?: string;
 }
 
 export interface Credit {
@@ -61,15 +78,20 @@ export interface Credit {
   names: string[];
 }
 
+export interface WebringLink {
+  title: string;
+  about?: string;
+  url: string;
+}
 export interface Webring {
-  prev: { title: string; url: string };
-  next: { title: string; url: string };
+  prev: WebringLink;
+  next: WebringLink;
 }
 
 export type Ui = typeof uiJson;
 
-export const floors = floorsJson as FloorData[];
-export const scenes = scenesJson as Scene[];
+export const places = floorsJson as unknown as Place[];
+export const scenes = scenesJson as unknown as Scene[];
 export const quotes = quotesJson as Quote[];
 export const credits = creditsJson as Credit[];
 export const webring = webringJson as Webring;
