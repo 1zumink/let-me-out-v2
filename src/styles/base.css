@@ -39,6 +39,21 @@
   font-display: swap;
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2190-2193, U+20AC, U+2122, U+2212;
 }
+/* Pangolin — разборчивый «печатный» почерк для надписей на стенах */
+@font-face {
+  font-family: 'Pangolin';
+  src: url('../assets/fonts/pangolin-cyrillic-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Pangolin';
+  src: url('../assets/fonts/pangolin-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2190-2193, U+20AC, U+2122, U+2212;
+}
 @font-face {
   font-family: 'JetBrains Mono';
   src: url('../assets/fonts/jetbrains-mono-cyrillic-400-normal.woff2') format('woff2');
@@ -178,7 +193,9 @@ a {
     bottom 0.3s ease;
 }
 .world.is-cut,
+.world.is-scrubbing,
 .is-reduced .world {
+  /* камера идёт за прокруткой без своего запаздывания */
   transition: none;
 }
 .floor {
@@ -238,9 +255,6 @@ a {
 .hero__svg .eye {
   fill: var(--line);
   stroke: none;
-}
-.hero.is-ghost {
-  opacity: 0.5;
 }
 
 /* зоны на теле героя: рука, грудь, руки */
@@ -633,12 +647,14 @@ a {
   gap: 8px;
   margin-top: 8px;
 }
-.scene__phone {
+.scene__image {
   position: static;
   display: block;
   translate: none;
-  width: 56px;
-  margin: 0 auto 6px;
+  width: 72px;
+  margin: 4px auto 10px;
+}
+.scene__image[alt^='старый'] {
   animation: ring 1.2s steps(4) infinite;
 }
 @keyframes ring {
@@ -654,8 +670,8 @@ a {
     rotate: 8deg;
   }
 }
-.is-reduced .scene__phone,
-.is-paused .scene__phone {
+.is-reduced .scene__image,
+.is-paused .scene__image {
   animation: none;
 }
 

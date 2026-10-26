@@ -36,3 +36,9 @@ export function beats(lines: Line[]): Beat[] {
   }
   return out;
 }
+
+/** Момент места: второй круг подменяет первый, если у него есть такой ключ; остальное общее. */
+export function pickMoment<T>(lines: { lap1: Record<string, unknown>; lap2?: Record<string, unknown> }, lap: 1 | 2, key: string): T | undefined {
+  const own = lap === 2 ? (lines.lap2?.[key] as T | undefined) : undefined;
+  return own ?? (lines.lap1[key] as T | undefined);
+}

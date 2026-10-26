@@ -12,6 +12,8 @@ const KEYS: Record<string, Action> = {
   Escape: 'escape',
 };
 
+export type ScrollFn = (delta: number, ended: boolean) => void;
+
 const typing = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
@@ -31,44 +33,57 @@ export function createInput(root: HTMLElement) {
     if (fire(action, e) && action !== 'escape') e.preventDefault();
   });
 
-  // свайп вверх пальцем = «выше»
-  let start: { x: number; y: number; id: number } | null = null;
-  root.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'touch') start = { x: e.clientX, y: e.clientY, id: e.pointerId };
-  });
-  root.addEventListener('pointerup', (e) => {
-    if (!start || e.pointerId !== start.id) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    start = null;
-    if (dy < -60 && Math.abs(dx) < Math.abs(dy) * 0.7) fire('up', e);
-  });
-  root.addEventListener('pointercancel', () => (start = null));
+  // «листай вверх»: колесо, трекпад и вертикальный drag пальцем — непрерывная прокрутка.
+  // delta > 0 — вверх, в пикселях; ended — жест закончился (палец поднят, колесо замолчало).
+  const scrollers = new Set<ScrollFn>();
+  const scroll = (delta: number, ended: boolean) => scrollers.forEach((fn) => fn(delta, ended));
 
-  // «листай вверх»: колесо или трекпад вверх = одно действие up; инерция не проскакивает этажи
-  let wheel = 0;
-  let lockedUntil = 0;
+  let wheelIdle = 0;
   root.addEventListener(
     'wheel',
     (e) => {
       if (e.ctrlKey) return; // щипок на трекпаде — это масштаб
-      const now = performance.now();
-      if (now < lockedUntil) return;
-      wheel = e.deltaY > 0 ? 0 : wheel + e.deltaY;
-      if (wheel < -60) {
-        wheel = 0;
-        lockedUntil = now + 900;
-        fire('up', e);
-      }
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? root.clientHeight : 1;
+      scroll(-e.deltaY * unit, false);
+      clearTimeout(wheelIdle);
+      wheelIdle = window.setTimeout(() => scroll(0, true), 180);
     },
     { passive: true },
   );
+
+  let touch: { id: number; x: number; y: number; vertical: boolean | null } | null = null;
+  root.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') touch = { id: e.pointerId, x: e.clientX, y: e.clientY, vertical: null };
+  });
+  root.addEventListener('pointermove', (e) => {
+    if (!touch || e.pointerId !== touch.id) return;
+    const dx = e.clientX - touch.x;
+    const dy = e.clientY - touch.y;
+    if (touch.vertical === null && Math.hypot(dx, dy) > 8) touch.vertical = Math.abs(dy) > Math.abs(dx);
+    if (!touch.vertical) return;
+    // палец тянет мир вниз = подъём вверх
+    scroll(dy, false);
+    touch.x = e.clientX;
+    touch.y = e.clientY;
+  });
+  const lift = (e: PointerEvent) => {
+    if (!touch || e.pointerId !== touch.id) return;
+    const was = touch.vertical;
+    touch = null;
+    if (was) scroll(0, true);
+  };
+  root.addEventListener('pointerup', lift);
+  root.addEventListener('pointercancel', lift);
 
   return {
     on(action: Action, fn: (e?: Event) => void) {
       if (!handlers.has(action)) handlers.set(action, new Set());
       handlers.get(action)!.add(fn);
       return () => handlers.get(action)!.delete(fn);
+    },
+    onScroll(fn: ScrollFn) {
+      scrollers.add(fn);
+      return () => scrollers.delete(fn);
     },
   };
 }

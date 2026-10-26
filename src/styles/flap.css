@@ -1,0 +1,22 @@
+/* «Взмах»: индикатор ритма — два крылышка заполняются, пока крыло восстанавливается */
+.flap-rhythm {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 0 4px;
+  pointer-events: none;
+}
+.flap-rhythm__wing {
+  --fill: 1;
+  width: 18px;
+  height: 30px;
+  border: 2px solid var(--line);
+  background: linear-gradient(to top, var(--light) calc(var(--fill) * 100%), transparent 0);
+  opacity: calc(0.45 + 0.55 * var(--fill));
+}
+.flap-rhythm__wing--left {
+  border-radius: 100% 10% 30% 60%;
+}
+.flap-rhythm__wing--right {
+  border-radius: 10% 100% 60% 30%;
+}

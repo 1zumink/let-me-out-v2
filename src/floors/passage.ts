@@ -1,20 +1,30 @@
 // Проход между этажами: пока читатель листает вверх, мимо проплывают вещи в нишах — по реплике на каждую.
+// Полка едет за прокруткой, герой лезет; в покое висит на кольце или корне, ноги свисают.
 import { h } from '../dom';
-import { focus } from '../a11y';
+import { focus, motion } from '../a11y';
+import { createScrub, type Scrub } from '../scrub';
 import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
-import type { Floor, FloorCtx } from './types';
+import { texturedWalls } from '../scene/textures';
+import type { Floor, FloorCtx, Pose } from './types';
 
 const SHIFT = 7; // % — на столько уезжают ниши за одно «листай»
+const ENTRY: Pose = { x: 50, y: 46, anchor: 'hands', state: 'hang' };
 
 export function passage(opts: { world?: SilhouetteOptions; decorate?: (ctx: FloorCtx) => void } = {}): Floor {
   let ctx: FloorCtx;
   const items: HTMLElement[] = [];
   const shelf = h('div.passage');
+  let scrub: Scrub | null = null;
+
   return {
+    entry: () => ENTRY,
     mount(c) {
       ctx = c;
-      c.el.append(silhouette(c.rng, opts.world ?? { wall: 14, ledges: [{ x0: 30, x1: 70, y: 84, depth: 10 }] }));
+      const walls = silhouette(c.rng, opts.world ?? { wall: 14 });
+      c.el.append(walls);
       opts.decorate?.(c);
+      const tex = texturedWalls(walls, (c.data.params as { texture?: string } | undefined)?.texture);
+      if (tex) walls.after(tex);
       const base = import.meta.env.BASE_URL;
       for (const it of c.data.collage ?? []) {
         const img = h('img.cutout.passage__item', { src: base + it.src, alt: it.alt ?? it.label, loading: 'lazy', decoding: 'async', hidden: true });
@@ -29,30 +39,46 @@ export function passage(opts: { world?: SilhouetteOptions; decorate?: (ctx: Floo
     },
     arrive() {
       ctx.hero.reset();
-      ctx.hero.place(50, 84);
-      ctx.hero.set('idle');
-      ctx.light(50, 60);
+      ctx.hero.put(ENTRY.x, ENTRY.y, ENTRY.anchor);
+      ctx.hero.set(ENTRY.state);
+      ctx.light(50, 50);
     },
     async start() {
       const lines = ctx.get<Record<string, string>>('items') ?? {};
       const ids = (ctx.data.collage ?? []).map((it) => it.id);
       const next = ctx.controls.appendChild(h('button.btn.btn--up', { type: 'button' }, ctx.ui.up));
       next.hidden = true;
+      next.addEventListener('click', () => scrub?.play());
+      ctx.on('up', () => scrub?.play());
+      ctx.onScroll((delta, ended) => {
+        if (!scrub) return;
+        if (ended) scrub.release();
+        else if (delta > 0 || scrub.progress > 0) scrub.drive(delta);
+      });
+
       for (let i = 0; i < items.length; i++) {
         if (i > 0) {
-          // ждём «листай вверх»: кнопка, стрелка, колесо или свайп
+          // ждём «листай вверх»: полка и герой идут за прокруткой, кнопка и стрелка — тот же путь
           next.hidden = false;
           focus(next);
           await new Promise<void>((resolve) => {
-            next.onclick = () => resolve();
-            ctx.on('up', resolve);
+            const from = (i - 1) * SHIFT;
+            scrub = createScrub({
+              distance: () => ctx.el.clientHeight * 0.6,
+              instant: motion.reduced,
+              onProgress: (p) => {
+                shelf.style.setProperty('--shift', `${from + p * SHIFT}%`);
+                const moving = p > 0 && p < 1;
+                if (moving && ctx.hero.state !== 'climb') ctx.hero.set('climb');
+                if (!moving && ctx.hero.state !== 'hang') ctx.hero.set('hang');
+              },
+              onCancel: () => ctx.hero.set('hang'),
+              onDone: resolve,
+            });
           });
+          scrub = null;
           if (ctx.signal.aborted) return;
           next.hidden = true;
-          ctx.hero.set('climb');
-          shelf.style.setProperty('--shift', `${i * SHIFT}%`);
-          await ctx.wait(700);
-          ctx.hero.set('idle');
         }
         const it = items[i];
         it.hidden = false;
@@ -66,6 +92,7 @@ export function passage(opts: { world?: SilhouetteOptions; decorate?: (ctx: Floo
     },
     stop() {},
     unmount() {
+      scrub?.reset();
       ctx.el.replaceChildren();
     },
   };

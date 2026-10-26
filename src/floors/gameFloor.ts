@@ -4,7 +4,8 @@ import type { Game } from '../games/common';
 import type { HeroState } from '../hero/hero';
 import type { Line } from '../data';
 import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
-import type { Floor, FloorCtx } from './types';
+import { texturedWalls } from '../scene/textures';
+import type { Floor, FloorCtx, Pose } from './types';
 
 export interface GameFloorOptions {
   heroAt?: [number, number];
@@ -30,19 +31,27 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
   let game: Game | null = null;
   const [x, y] = opts.heroAt ?? [50, 78];
 
+  const entry = (): Pose => ({ x, y, anchor: opts.heroAnchor, state: opts.heroState ?? 'idle' });
+
   return {
+    entry,
     mount(c) {
       ctx = c;
-      c.el.append(silhouette(c.rng, opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] }));
+      const walls = silhouette(c.rng, opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] });
+      c.el.append(walls);
       opts.decorate?.(c);
+      // фактура — после decorate: этажи дорисовывают в силуэт свои выступы
+      const tex = texturedWalls(walls, (c.data.params as { texture?: string } | undefined)?.texture);
+      if (tex) walls.after(tex);
       const make = c.data.game && (opts.hasGame?.(c) ?? true) ? games[c.data.game] : undefined;
       game = make ? make(c, () => c.done()) : null;
     },
     arrive() {
+      // после подъёма герой уже стоит в позе входа — place ничего не сдвигает
       ctx.hero.reset();
       ctx.hero.flip(false);
-      ctx.hero.place(x, y, opts.heroAnchor);
-      ctx.hero.set(opts.heroState ?? 'idle');
+      ctx.hero.put(x, y, opts.heroAnchor);
+      ctx.hero.set(entry().state);
       if (opts.light) ctx.light(...opts.light);
       else ctx.light(x, opts.heroAnchor === 'hands' ? y + 14 : y - 18);
     },

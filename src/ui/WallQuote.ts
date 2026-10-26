@@ -1,4 +1,4 @@
-// Цитата — надпись на стене: Caveat, свой наклон, неровная толщина, подтёк или зачёркнутое слово.
+// Цитата — надпись на стене: Pangolin, свой наклон, неровная базовая линия, подтёк или зачёркнутое слово.
 import { h } from '../dom';
 import type { Quote } from '../data';
 import { between, type Rng } from '../rng';
@@ -16,9 +16,7 @@ export function WallQuote(q: Quote, { x, y, rng }: { x: number; y: number; rng: 
   const dripAt = struck < 0 ? Math.floor(rng() * words.length) : -1;
   words.forEach((w, i) => {
     const span = h(i === struck ? 's.wall-quote__word' : 'span.wall-quote__word', {}, w);
-    span.style.setProperty('--w', String(Math.round(between(rng, 400, 700) / 100) * 100));
-    span.style.setProperty('--r', `${between(rng, -1.5, 1.5).toFixed(2)}deg`);
-    span.style.setProperty('--s', between(rng, 0.94, 1.08).toFixed(2));
+    span.style.setProperty('--r', `${between(rng, -0.6, 0.6).toFixed(2)}deg`);
     if (i === dripAt) span.classList.add('has-drip');
     text.append(span, i < words.length - 1 ? ' ' : '');
   });
@@ -29,9 +27,9 @@ export function WallQuote(q: Quote, { x, y, rng }: { x: number; y: number; rng: 
     text,
     h('figcaption.wall-quote__by', {}, `— ${q.by ?? q.author}`, Footnote(q)),
   );
-  el.style.left = `${x}%`;
-  el.style.top = `${y}%`;
-  el.style.setProperty('--tilt', `${between(rng, -8, 6).toFixed(1)}deg`);
+  el.style.setProperty('--x', String(x));
+  el.style.setProperty('--y', String(y));
+  el.style.setProperty('--tilt', `${between(rng, -4, 3).toFixed(1)}deg`);
   // сноски длинные — чем больше слов, тем мельче почерк
   el.classList.toggle('wall-quote--long', words.length > 24);
   current = el;

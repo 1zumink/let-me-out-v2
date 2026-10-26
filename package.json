@@ -11,12 +11,14 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sprites:normalize": "node scripts/sprites-normalize.mjs",
-    "sprites:check": "node scripts/sprites-check.mjs"
+    "sprites:check": "node scripts/sprites-check.mjs",
+    "collage:normalize": "node scripts/collage-normalize.mjs"
   },
   "devDependencies": {
     "@fontsource/caveat": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/neucha": "^5.3.0",
+    "@fontsource/pangolin": "^5.3.0",
     "sharp": "^0.33.5",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",

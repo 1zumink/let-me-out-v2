@@ -18,13 +18,19 @@ const img = (src: string, cls = 'cutout') => h(`img.${cls}`, { src: import.meta.
 export const floor0 = () =>
   gameFloor({
     heroAt: [50, 84],
+    heroState: 'sit',
     light: [50, 70, 26],
     world: { ledges: [{ x0: 8, x1: 92, y: 84, depth: 20 }, { x0: 44, x1: 56, y: 84.5, depth: 3 }] },
-    decorate: (ctx) => ctx.el.append(h('div.light-strip', { 'aria-hidden': 'true' })),
+    decorate: (ctx) => {
+      ctx.el.append(h('div.light-strip', { 'aria-hidden': 'true' }));
+      // «а один раз упал носок» — вырезка, как и вещи выше
+      const sock = h('img.cutout.floor-sock', { src: import.meta.env.BASE_URL + 'assets/collage/sock.svg', alt: 'носок, упавший сверху', loading: 'lazy' });
+      ctx.el.append(sock);
+    },
   });
 
 // ↑ Проход: колодезные кольца
-export const passageRings = () => passage({ world: { wall: 16, ledges: [{ x0: 30, x1: 70, y: 84, depth: 10 }] }, decorate: (ctx) => ctx.el.append(h('div.rings', { 'aria-hidden': 'true' })) });
+export const passageRings = () => passage({ world: { wall: 16 }, decorate: (ctx) => ctx.el.append(h('div.rings', { 'aria-hidden': 'true' })) });
 
 // 1. Руки и 7. Свет — «Держи»: выступы-остановки на стене
 const holdFloor = (smooth: boolean) => () =>
@@ -35,9 +41,13 @@ const holdFloor = (smooth: boolean) => () =>
     decorate: (ctx) => {
       const stops = (ctx.data.params as { stops: number[] }).stops;
       if (!smooth) {
-        // выступы на остановках; на этаже 7 стены гладкие
+        // выступы на остановках (руки на кромке), последний — широкий, на него садятся;
+        // на этаже 7 стены гладкие
         const svg = ctx.el.querySelector('.silhouette');
-        stops.forEach((y) => svg?.insertAdjacentHTML('beforeend', `<polygon points="40,${y} 60,${y + 0.4} 59,${y + 3} 41,${y + 2.6}"/>`));
+        stops.forEach((y, i) => {
+          const [a, b] = i === stops.length - 1 ? [32, 68] : [42, 58];
+          svg?.insertAdjacentHTML('beforeend', `<polygon points="${a},${y} ${b},${y + 0.4} ${b - 1},${y + 3} ${a + 1},${y + 2.6}"/>`);
+        });
       } else ctx.el.append(h('div.light-window', { 'aria-hidden': 'true' }));
     },
   });
@@ -51,7 +61,7 @@ export const floor2 = (): Floor => {
 };
 
 // ↑ Проход: корни
-export const passageRoots = () => passage({ world: { wall: 18, ledges: [{ x0: 30, x1: 70, y: 84, depth: 10 }] } });
+export const passageRoots = () => passage({ world: { wall: 18 } });
 
 // 3. Деревянная комната. Второй круг — такой, какой её оставили, без игры
 export const floor3 = () => {
@@ -165,19 +175,33 @@ export const passageLedge = (): Floor => {
   };
 };
 
-// 6. Призрак. Второй круг — игра только по «всё равно попробовать»
+// 6. Призрак. Верёвка в нише правой стены: найдёт призрак — потом за неё возьмётся тело.
+// Второй круг — игра только по «всё равно попробовать».
+const takeRope = (ctx: FloorCtx) => {
+  if (!ctx.el.querySelector('.cavity.is-open')) return;
+  // последствие прохода сквозь стену: тело идёт к найденной верёвке и берётся за неё — подъём начнётся отсюда
+  const [rx, ry] = GHOST_PROPS.rope;
+  ctx.hero.flip(false);
+  ctx.hero.set('climb');
+  ctx.hero.place(rx - 4, 80);
+  ctx.light(rx - 4, ry + 20, 30);
+  ctx.after(950, () => ctx.hero.set('held'));
+};
+
 export const floor6 = () =>
   gameFloor({
     heroAt: [30, 80],
+    heroState: 'sit',
     light: [42, 66, 26],
-    world: { ledges: [{ x0: 12, x1: 56, y: 80, depth: 10 }] },
+    world: { ledges: [{ x0: 12, x1: 92, y: 80, depth: 10 }] },
     hasGame: (ctx) => ctx.lap === 1,
     decorate: (ctx) => {
       const [rx, ry] = GHOST_PROPS.rope;
       const rope = h('div.rope', { 'aria-hidden': 'true' });
       rope.style.left = `${rx}%`;
-      rope.style.height = `${ry}%`;
-      ctx.el.append(rope);
+      rope.style.height = `${ry + 36}%`;
+      const cavity = h('div.cavity', { 'aria-hidden': 'true' }, rope);
+      ctx.el.append(cavity);
       if (memory.get().jar) {
         const jar = img('assets/collage/jar.svg', 'cutout.jar-light');
         jar.style.left = `${GHOST_PROPS.jar[0]}%`;
@@ -186,11 +210,15 @@ export const floor6 = () =>
       }
     },
     rest: (ctx) => {
+      takeRope(ctx);
       if (ctx.lap !== 2) return;
       const tryBtn = h('button.btn', { type: 'button' }, ctx.ui.ghostTry);
       tryBtn.addEventListener('click', () => {
         tryBtn.remove();
-        const game = games.ghost!(ctx, () => game.stop());
+        const game = games.ghost!(ctx, () => {
+          game.stop();
+          takeRope(ctx);
+        });
         game.start();
       });
       ctx.controls.append(tryBtn);

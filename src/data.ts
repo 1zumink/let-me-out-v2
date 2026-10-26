@@ -57,7 +57,8 @@ export interface Scene {
   /** только после этого места */
   after?: string;
   creature?: string;
-  visual?: string;
+  /** коллажная вырезка в карточке сцены */
+  image?: { src: string; alt: string };
   steps: SceneStep[];
 }
 

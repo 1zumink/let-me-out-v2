@@ -1,5 +1,6 @@
 import type { Line, Place, Ui } from '../data';
-import type { Hero } from '../hero/hero';
+import type { Hero, HeroState } from '../hero/hero';
+import type { ScrollFn } from '../input';
 import type { Rng } from '../rng';
 import type { Lap } from '../state';
 import type { Action } from '../input';
@@ -23,8 +24,10 @@ export interface FloorCtx {
   signal: AbortSignal;
   after(ms: number, fn: () => void): void;
   wait(ms: number): Promise<void>;
-  /** Клавиши, колесо и свайпы, пока место смонтировано. */
+  /** Клавиши, пока место смонтировано. */
   on(action: Action, fn: () => void): void;
+  /** Прокрутка (колесо, трекпад, палец), пока место смонтировано. */
+  onScroll(fn: ScrollFn): void;
   say(lines: Line[]): Promise<void>;
   /** Реплики момента: второй круг подменяет первый, если у него есть такой ключ. */
   lines(key: string): Line[];
@@ -39,7 +42,17 @@ export interface FloorCtx {
   done(): void;
 }
 
+/** Поза героя: точка ног или рук в процентах игровой области и состояние. */
+export interface Pose {
+  x: number;
+  y: number;
+  anchor?: 'feet' | 'hands';
+  state: HeroState;
+}
+
 export interface Floor {
+  /** Где и как герой оказывается, поднявшись сюда, — к этой позе ведёт прокрутка. */
+  entry(): Pose;
   /** Строит место в слоте; камера ещё едет. */
   mount(ctx: FloorCtx): void;
   /** Камера приехала: расставить героя и свет. */

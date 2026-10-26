@@ -13,9 +13,12 @@ const HIGH = 22;
 const NEAR = 9;
 const TRIES = 3;
 export const GHOST_PROPS = {
-  rope: [64, 40] as [number, number], // где висит верёвка
+  // верёвка спрятана в нише правой стены: телу её не видно, призрак находит её, пройдя сквозь стену
+  rope: [93, 44] as [number, number],
   jar: [40, 78] as [number, number], // где стоит банка со светом (если её забрали из сцены S3)
 };
+const MERGE_MS = 1400;
+const FADE_MS = 500;
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
 export const createGhost: GameFactory = (ctx, onDone) => {
@@ -66,7 +69,9 @@ export const createGhost: GameFactory = (ctx, onDone) => {
     ghost.el.style.setProperty('--fade', String(clamp((ny - 10) / 60, 0.25, 1)));
     attempt('move');
     if (nx < WALL || nx > 100 - WALL) attempt('wall');
-    if (near(GHOST_PROPS.rope)) attempt('ledge');
+    // правая стена: ниша с верёвкой открывается, когда в неё входит призрак
+    if (nx > 100 - WALL) ctx.el.querySelector('.cavity')?.classList.add('is-open');
+    if (near(GHOST_PROPS.rope) && ctx.el.querySelector('.cavity.is-open')) attempt('ledge');
     if (leftBody && near(body)) attempt('body');
     if (hasJar && near(GHOST_PROPS.jar)) attempt('jar');
     if (ny < HIGH) attempt('high');
@@ -87,13 +92,20 @@ export const createGhost: GameFactory = (ctx, onDone) => {
     while (speaking) await ctx.wait(200);
     await ctx.say(ctx.lines('end'));
     if (s.signal.aborted) return;
-    // призрак входит в тело
+    // призрак возвращается в тело: подплывает, гаснет, тело коротко вспыхивает
     if (ghost) {
-      ghost.el.classList.add('is-floating');
-      ghost.place(...body);
-      await ctx.wait(1400);
-      ghost.destroy();
-      ghost = null;
+      const g = ghost;
+      g.el.classList.remove('is-dragging');
+      g.el.classList.add('is-floating');
+      g.place(...body);
+      await ctx.wait(MERGE_MS);
+      await g.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_MS, fill: 'forwards' }).finished.catch(() => {});
+      hero.el.classList.remove('is-merge');
+      void hero.el.offsetWidth;
+      hero.el.classList.add('is-merge');
+      g.destroy();
+      if (ghost === g) ghost = null;
+      ctx.speaker('ghost', null);
     }
     // тихое последействие: один экран без событий
     await ctx.wait(1800);

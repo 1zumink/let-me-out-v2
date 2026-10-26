@@ -105,10 +105,6 @@ html[data-boil='1']:not(.is-reduced):not(.is-paused) .boil {
 html[data-boil='2']:not(.is-reduced):not(.is-paused) .boil {
   filter: url(#boil-2);
 }
-.hero.is-ghost .hero__sprite,
-.hero.is-ghost .hero__svg {
-  filter: url(#ghost) !important;
-}
 .defs {
   position: absolute;
   width: 0;
@@ -181,14 +177,22 @@ html[data-boil='2']:not(.is-reduced):not(.is-paused) .boil {
   animation: none;
 }
 
-/* надпись на стене */
+/* надпись на стене: разборчивый «печатный» почерк мелом, без игры толщиной */
 .wall-quote {
+  /* --x — точка надписи в % ширины этажа; центр прижимается к краям, чтобы у края экрана надпись не сжималась в столбик */
+  --qw: min(30ch, 100% - 24px);
   position: absolute;
+  left: clamp(calc(var(--qw) / 2 + 12px), var(--x, 50) * 1%, calc(100% - var(--qw) / 2 - 12px));
+  top: calc(var(--y, 34) * 1%);
   margin: 0;
-  max-width: min(22rem, 70vw);
+  width: max-content;
+  max-width: var(--qw);
   translate: -50% -50%;
   rotate: var(--tilt, 0deg);
-  font-family: var(--font-quote);
+  font-family: 'Pangolin', var(--font-hand);
+  font-weight: 400;
+  /* размер на самой надписи, чтобы 30ch считались в её буквах */
+  font-size: clamp(22px, 16px + 1.2vw, 26px);
   color: var(--line);
   opacity: 0;
   transition: opacity 1.6s ease;
@@ -199,26 +203,32 @@ html[data-boil='2']:not(.is-reduced):not(.is-paused) .boil {
 .is-reduced .wall-quote {
   transition: none;
 }
+/* на узком экране надпись по центру заходит под кнопки шапки — вешаем её за верхний край, ниже кнопок */
+@media (max-width: 600px) {
+  .wall-quote {
+    top: max(calc(var(--y, 34) * 1% - 4em), 100px);
+    translate: -50% 0;
+  }
+}
 .wall-quote__text {
   margin: 0;
-  font-size: clamp(22px, 5vw, 32px);
-  line-height: 1.15;
+  line-height: 1.35;
+  /* мел: тонкий светлый ореол по краю и тёмная подложка, чтобы буквы не тонули в свете */
+  text-shadow:
+    0 0 1px rgb(232 228 220 / 0.45),
+    0 1px 2px rgb(5 5 5 / 0.9),
+    0 0 10px rgb(5 5 5 / 0.6);
 }
 .wall-quote--long {
-  max-width: min(26rem, 84vw);
-}
-.wall-quote--long .wall-quote__text {
-  font-size: clamp(19px, 3.6vw, 25px);
+  font-size: clamp(20px, 15px + 0.9vw, 23px);
 }
 .wall-quote__word {
   display: inline-block;
-  font-weight: var(--w, 400);
   rotate: var(--r, 0deg);
-  scale: var(--s, 1);
   position: relative;
 }
 s.wall-quote__word {
-  text-decoration-thickness: 3px;
+  text-decoration-thickness: 2px;
   text-decoration-color: var(--line);
 }
 .wall-quote__word.has-drip::after {
@@ -260,4 +270,17 @@ s.wall-quote__word {
 .grip__arm {
   width: 4px;
   border-radius: 2px;
+}
+
+/* фото-фактура в очертаниях стен: затемнена, ч/б — мир остаётся силуэтом */
+.walls-texture {
+  position: absolute;
+  inset: 0;
+  background-size: 360px;
+  filter: grayscale(1) brightness(0.32) contrast(1.15);
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  pointer-events: none;
 }

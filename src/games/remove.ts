@@ -7,6 +7,7 @@ import { memory } from '../memory';
 import { between, type Rng } from '../rng';
 import type { FloorCtx } from '../floors/types';
 import { scope, type GameFactory } from './common';
+import { textureUrl } from '../scene/textures';
 
 const SHAKE_MS = 180;
 const SHATTER_MS = 420;
@@ -69,6 +70,9 @@ export function buildRoom(ctx: FloorCtx, removed: string[], interactive: boolean
     h('img.room-item__img', { src: base + src, alt: '', draggable: 'false', loading: 'lazy', decoding: 'async' });
 
   const backdrop = h('div.room-backdrop', { 'aria-hidden': 'true' });
+  // доски комнаты — фото-фактура, если она уже есть; иначе нарисованные полосы
+  const planks = textureUrl('planks');
+  if (planks) backdrop.style.backgroundImage = `url("${planks}")`;
   room.append(backdrop);
 
   const table = h('div.room-item.room-item--static', { 'aria-hidden': 'true' }, img(params.table.src));

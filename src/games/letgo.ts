@@ -11,7 +11,8 @@ const LONG_MS = 20000;
 export const createLetgo: GameFactory = (ctx, onDone) => {
   const s = scope(ctx);
   const { hero, ui } = ctx;
-  const home = hero.position;
+  // поза у кромки стекла; запоминается на старте — место монтируется ещё до подъёма
+  let home: [number, number] = [50, 50];
   let holding = false;
   let ready = false; // «А теперь отпусти» уже сказано
   let released = false;
@@ -34,6 +35,7 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
   const follow = (e: PointerEvent) => {
     if (!holding || released) return;
     const r = ctx.el.getBoundingClientRect();
+    // герой висит под указателем: его рука — в руке читателя
     hero.place(((e.clientX - r.left) / r.width) * 100, ((e.clientY - r.top) / r.height) * 100, 'hands');
   };
 
@@ -41,17 +43,19 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
     if (ctx.lap === 2) {
       // после второго круга падения нет: герой сидит на нижней кромке окна и смотрит на читателя
       hero.el.classList.remove('is-tracking');
-      hero.set('idle');
+      hero.set('sit');
       hero.place(50, 100);
       await ctx.wait(1200);
       return onDone();
     }
+    // transform, а не translate: translate у героя занят якорем, и падение начиналось бы с рывка
     const anim = motion.reduced()
       ? hero.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' })
       : hero.el.animate(
           [
-            { translate: '0 0', opacity: 1 },
-            { translate: '0 80vh', opacity: 0 },
+            { transform: 'translateY(0)', opacity: 1, offset: 0 },
+            { transform: 'translateY(30vh)', opacity: 1, offset: 0.55 },
+            { transform: 'translateY(90vh)', opacity: 0, offset: 1 },
           ],
           { duration: 1600, easing: 'cubic-bezier(.5,0,.9,.5)', fill: 'forwards' },
         );
@@ -66,13 +70,18 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
     hands.remove();
     button.remove();
     hero.el.classList.remove('is-tracking');
-    hero.set(ctx.lap === 2 ? 'idle' : 'letgo', ctx.lap === 2 ? undefined : fall);
-    if (ctx.lap === 2) fall();
+    if (ctx.lap === 2) return void fall();
+    // пальцы раскрываются — и падение; страховка, если последний кадр не наступит (пауза, сбой загрузки)
+    let fell = false;
+    const once = () => !fell && ((fell = true), fall());
+    hero.set('letgo', once);
+    s.after(1500, once);
   };
 
   return {
     start() {
       hint.poke();
+      home = hero.position;
       hero.set('hang');
       hero.attach(hands);
       bindHold(
@@ -81,6 +90,7 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
           onStart: () => {
             holding = true;
             hint.poke();
+            hero.set('held');
             hands.setAttribute('aria-pressed', 'true');
             hands.classList.add('is-held');
             hero.el.classList.add('is-tracking');
@@ -93,7 +103,8 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
             if (ready) return release();
             // отпустил раньше времени — герой снова висит на краю стекла
             hero.el.classList.remove('is-tracking');
-            hero.place(home[0], home[1], 'hands');
+            hero.set('hang');
+            hero.place(home[0], home[1]);
           },
         },
         s.signal,

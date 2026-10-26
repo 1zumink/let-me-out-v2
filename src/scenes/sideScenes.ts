@@ -9,16 +9,6 @@ import { Creature, type CreatureKind } from '../ui/Creature';
 import { pickScene, sceneDuration } from './pick';
 
 const order = places.map((p) => p.id);
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-function phone() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 64 48');
-  svg.setAttribute('class', 'creature scene__phone');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.innerHTML = '<path d="M14 18 Q32 6 50 18 L46 24 L40 21 L40 17 Q32 14 24 17 L24 21 L18 24 Z"/><path d="M20 26 L44 26 L48 42 L16 42 Z"/><circle cx="32" cy="34" r="4"/>';
-  return svg;
-}
 
 export function createSideScenes({ layer, store, scenes, rng, ui }: { layer: HTMLElement; store: Store; scenes: Scene[]; rng: Rng; ui: Ui }) {
   let shownAt: Record<string, string> = {};
@@ -32,7 +22,8 @@ export function createSideScenes({ layer, store, scenes, rng, ui }: { layer: HTM
     const body = h('div.scene__body');
     const card = h('aside.scene', { 'aria-label': scene.title }, close, body);
     if (scene.creature) card.insertBefore(Creature(scene.creature as CreatureKind, { x: 50, y: 50, size: 72, rng, signal: ac.signal }), body);
-    if (scene.visual === 'phone') card.insertBefore(phone(), body);
+    if (scene.image)
+      card.insertBefore(h('img.cutout.scene__image', { src: import.meta.env.BASE_URL + scene.image.src, alt: scene.image.alt, loading: 'lazy' }), body);
     layer.append(card);
     requestAnimationFrame(() => card.classList.add('is-in'));
 

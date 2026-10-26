@@ -49,7 +49,14 @@ export const createBreathe: GameFactory = (ctx, onDone) => {
     idleTimer = s.after(IDLE_MS, () => !inhaling && !speaking && stopped());
   };
 
-  const rise = () => hero.place(X, Math.max(Y0 - breaths * RISE, 40));
+  // на каждом вдохе герой подтягивается по дымоходу: короткий climb, потом снова стоит, упираясь
+  const rise = () => {
+    hero.place(X, Math.max(Y0 - breaths * RISE, 40));
+    if (!inhaling) {
+      hero.set('climb');
+      s.after(450, () => !inhaling && !s.signal.aborted && hero.set('idle'));
+    }
+  };
 
   const press = () => {
     if (auto || finished) return;

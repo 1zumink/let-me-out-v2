@@ -2,7 +2,7 @@
 import { motion } from '../a11y';
 import { stickFrames } from './hero.svg';
 
-export type HeroState = 'idle' | 'climb' | 'slip' | 'hold' | 'breathe' | 'fly' | 'ghost' | 'hang' | 'letgo';
+export type HeroState = 'idle' | 'sit' | 'climb' | 'slip' | 'hold' | 'held' | 'breathe' | 'fly' | 'ghost' | 'hang' | 'letgo';
 export interface StripSpec {
   frames: number;
   fps: number;
@@ -14,6 +14,11 @@ export type HeroSpec = Partial<Record<HeroState, StripSpec>>;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const SVG_FPS = 4;
+// кадр 256: ноги на y=236, руки висящих поз — на y≈18
+const FEET = 236 / 256;
+const HANDS = 18 / 256;
+// если ленты нового состояния ещё нет — ближайшая из нарисованных
+const FALLBACK: Partial<Record<HeroState, HeroState>> = { sit: 'idle', held: 'hold', ghost: 'idle' };
 
 // какие ленты реально загрузились; общий кеш на всех героев (герой и его призрак)
 const loaded = new Map<string, Promise<boolean>>();
@@ -69,6 +74,7 @@ export class Hero {
     this._state = state;
     this.onceDone = onEnd ?? null;
     this.el.classList.toggle('is-ghost', state === 'ghost');
+    this.el.dataset.state = state;
     this.replay();
   }
 
@@ -82,18 +88,41 @@ export class Hero {
   reset() {
     this.el.getAnimations().forEach((a) => a.cancel());
     this.el.style.opacity = '';
+    this.el.style.transform = '';
     this.el.hidden = false;
+    this.el.classList.remove('is-tracking', 'is-blink', 'is-floating', 'is-dragging');
+  }
+
+  /** Скорость покадровой анимации (крылья бьют сильнее или слабее). */
+  rate(r: number) {
+    if (this.anim) this.anim.playbackRate = r;
   }
 
   flip(left: boolean) {
     this.el.style.setProperty('--flip', left ? '-1' : '1');
   }
 
-  /** Ставит героя в точку (x, y) в процентах от родителя: ногами или, если висит, руками. */
+  /** Ставит героя в точку (x, y) в процентах от родителя: ногами или, если висит, руками.
+   * Якорь в CSS один — ноги; точка рук пересчитывается, чтобы смена позы не давала скачка. */
   place(x: number, y: number, anchor: 'feet' | 'hands' = 'feet') {
-    this.el.classList.toggle('is-anchor-hands', anchor === 'hands');
     this.el.style.left = `${x}%`;
-    this.el.style.top = `${y}%`;
+    this.el.style.top = `${this.toFeet(y, anchor)}%`;
+  }
+
+  /** Поставить сразу, без перехода: появление на месте (загрузка, новый круг), а не путь к нему. */
+  put(x: number, y: number, anchor: 'feet' | 'hands' = 'feet') {
+    this.el.classList.add('is-tracking');
+    this.place(x, y, anchor);
+    void this.el.offsetWidth;
+    this.el.classList.remove('is-tracking');
+  }
+
+  /** y точки ног (в % родителя) для позы, заданной ногами или руками. */
+  toFeet(y: number, anchor: 'feet' | 'hands' = 'feet') {
+    if (anchor === 'feet') return y;
+    const parent = this.el.parentElement?.clientHeight || 0;
+    const size = this.el.offsetHeight || parent * 0.26;
+    return parent ? y + ((FEET - HANDS) * size * 100) / parent : y + 22;
   }
 
   /** Где герой сейчас, в процентах от родителя. */
@@ -109,7 +138,8 @@ export class Hero {
   }
 
   private stripFor(state: HeroState): HeroState {
-    return state === 'ghost' ? 'idle' : state;
+    if (state === 'ghost' && this.spec.ghost) return 'ghost';
+    return this.spec[state] ? state : (FALLBACK[state] ?? state);
   }
 
   private async replay() {
