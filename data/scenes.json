@@ -5,7 +5,6 @@
     "where": [
       "f1",
       "f2",
-      "p-roots",
       "f3"
     ],
     "laps": [
@@ -56,7 +55,6 @@
     "where": [
       "f1",
       "f2",
-      "p-roots",
       "f3"
     ],
     "laps": [
@@ -76,7 +74,6 @@
     "title": "Кто тебя тянет",
     "where": [
       "f2",
-      "p-roots",
       "f3",
       "f4",
       "f5"
@@ -128,8 +125,7 @@
     "id": "S3",
     "title": "Банка",
     "where": [
-      "p-rings",
-      "p-roots"
+      "passage"
     ],
     "laps": [
       1,
@@ -168,8 +164,7 @@
     "id": "S4",
     "title": "Записка в стене",
     "where": [
-      "p-rings",
-      "p-roots",
+      "passage",
       "p-ledge"
     ],
     "laps": [
@@ -190,8 +185,7 @@
     "id": "S4-write",
     "title": "Записка в стене",
     "where": [
-      "p-rings",
-      "p-roots",
+      "passage",
       "p-ledge"
     ],
     "laps": [
@@ -230,10 +224,8 @@
     "title": "Табличка",
     "where": [
       "f0",
-      "p-rings",
       "f1",
       "f2",
-      "p-roots",
       "f3",
       "f4",
       "f5",
@@ -262,10 +254,8 @@
     "title": "Табличка · вторая",
     "where": [
       "f0",
-      "p-rings",
       "f1",
       "f2",
-      "p-roots",
       "f3",
       "f4",
       "f5",
@@ -329,7 +319,6 @@
     "where": [
       "f1",
       "f2",
-      "p-roots",
       "f3",
       "f4"
     ],
@@ -412,8 +401,7 @@
     "id": "S10",
     "title": "Телефон в стене",
     "where": [
-      "p-rings",
-      "p-roots",
+      "passage",
       "p-ledge"
     ],
     "laps": [

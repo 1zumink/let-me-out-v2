@@ -68,6 +68,24 @@ export function validateScenes(scenes, placeIds = null) {
   return out;
 }
 
+export function validatePassages(pool) {
+  const out = [];
+  if (!pool || !Array.isArray(pool.items) || !pool.items.length) return ['passages.json: нужен непустой items'];
+  if (!Array.isArray(pool.outro)) out.push('passages.json: outro — массив реплик');
+  const ids = new Set();
+  pool.items.forEach((it, i) => {
+    const at = `passages.json.items[${i}]${it?.id ? ` (${it.id})` : ''}`;
+    if (!isStr(it?.id)) out.push(`${at}: нет id`);
+    else if (ids.has(it.id)) out.push(`${at}: повтор id`);
+    ids.add(it?.id);
+    for (const k of ['label', 'src', 'line']) if (!isStr(it?.[k])) out.push(`${at}: нет ${k}`);
+    if (!(it?.w > 0)) out.push(`${at}: нужна ширина w`);
+  });
+  // 4–5 проходов за круг без повторов
+  if (pool.items.length < 5) out.push('passages.json: для 4–5 проходов за круг нужно хотя бы 5 вещей');
+  return out;
+}
+
 const GAMES = ['hold', 'breathe', 'remove', 'flap', 'ghost', 'letgo'];
 export function validatePlaces(places, quoteIds) {
   const out = [];
@@ -100,13 +118,15 @@ async function main() {
     else if (Array.isArray(v)) v.forEach((x, i) => scanTodo(`${where}[${i}]`, x));
     else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => scanTodo(`${where}.${k}`, x));
   };
-  const [places, scenes, quotes, credits, webring, hero, ui] = await Promise.all(
-    ['floors.json', 'scenes.json', 'quotes.json', 'credits.json', 'webring.json', 'hero.json', 'ui.json'].map(read),
+  const [places, scenes, quotes, credits, webring, hero, ui, passages] = await Promise.all(
+    ['floors.json', 'scenes.json', 'quotes.json', 'credits.json', 'webring.json', 'hero.json', 'ui.json', 'passages.json'].map(read),
   );
   errors.push(...validateQuotes(quotes));
   const quoteIds = new Set(quotes.filter((q) => isStr(q.source)).map((q) => q.id));
   errors.push(...validatePlaces(places, quoteIds));
-  errors.push(...validateScenes(scenes, new Set(places.map((p) => p.id))));
+  errors.push(...validatePassages(passages));
+  // в where сцен — id этажей и уступа или тег passage (случайный проход)
+  errors.push(...validateScenes(scenes, new Set([...places.map((p) => p.id), 'passage'])));
   if (!Array.isArray(credits)) errors.push('credits.json: должен быть массив');
   for (const k of ['prev', 'next']) if (!isStr(webring?.[k]?.title) || !isStr(webring?.[k]?.url)) errors.push(`webring.json: нужен ${k}.title и ${k}.url`);
   for (const [k, v] of Object.entries(hero)) {
@@ -115,7 +135,7 @@ async function main() {
   }
   for (const p of places) if (p.game && !isStr(ui.instructions?.[p.game])) errors.push(`ui.json: нет инструкции для игры ${p.game}`);
 
-  for (const [name, v] of Object.entries({ floors: places, scenes, quotes, credits, webring, ui })) scanTodo(name, v);
+  for (const [name, v] of Object.entries({ floors: places, scenes, quotes, credits, webring, ui, passages })) scanTodo(name, v);
   if (todos.length) console.warn(`data: ${todos.length} строк с TODO:\n  ${todos.join('\n  ')}`);
   if (errors.length) {
     console.error('Ошибки в data/:\n  ' + errors.join('\n  '));

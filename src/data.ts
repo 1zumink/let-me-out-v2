@@ -6,6 +6,8 @@ import creditsJson from '../data/credits.json';
 import webringJson from '../data/webring.json';
 import heroJson from '../data/hero.json';
 import uiJson from '../data/ui.json';
+import passagesJson from '../data/passages.json';
+import type { PassagePool } from './route';
 import type { HeroSpec } from './hero/hero';
 
 export type GameType = 'hold' | 'breathe' | 'remove' | 'flap' | 'ghost' | 'letgo';
@@ -91,7 +93,9 @@ export interface Webring {
 
 export type Ui = typeof uiJson;
 
+/** Этажи и тихий уступ; случайные проходы между ними добавляет route.ts на каждый круг. */
 export const places = floorsJson as unknown as Place[];
+export const passagePool = passagesJson as PassagePool;
 export const scenes = scenesJson as unknown as Scene[];
 export const quotes = quotesJson as Quote[];
 export const credits = creditsJson as Credit[];

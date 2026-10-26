@@ -1,7 +1,8 @@
 import './styles/base.css';
 import './styles/layers.css';
 import './styles/games.css';
-import { places, heroSpec, quotes, scenes, ui, webring, type Line } from './data';
+import { places, passagePool, heroSpec, quotes, scenes, ui, webring, type Line, type Place } from './data';
+import { buildRoute } from './route';
 import { createStore, type Lap } from './state';
 import { storage, LAP_KEY } from './storage';
 import { memory } from './memory';
@@ -29,10 +30,15 @@ const HINT_MS = 20000;
 const seed = seedFromUrl(location.search);
 document.documentElement.dataset.seed = String(seed);
 const rng = mulberry32(seed);
-// ?floor=N — начать с места N (0–11; для отладки и показа)
+const lapNow = (storage.get(LAP_KEY) === '2' ? 2 : 1) as Lap;
+/** Маршрут круга: этажи и уступ на местах, 4–5 случайных проходов между ними. Новый на каждый круг. */
+let route: Place[] = [];
+const newRoute = () => (route = buildRoute({ places, pool: passagePool, rng, seenItems: memory.get().seenItems }));
+newRoute();
+// ?floor=N — начать с этажа N истории (0–8; для отладки и показа)
 const floorParam = Number(new URLSearchParams(location.search).get('floor'));
-const startAt = Number.isInteger(floorParam) && floorParam > 0 && floorParam < places.length ? floorParam : 0;
-const store = createStore({ lap: (storage.get(LAP_KEY) === '2' ? 2 : 1) as Lap, floor: startAt });
+const startAt = Number.isInteger(floorParam) && floorParam > 0 ? Math.max(0, route.findIndex((p) => p.id === `f${floorParam}`)) : 0;
+const store = createStore({ lap: lapNow, floor: startAt });
 
 // ── сцена ─────────────────────────────────────────────
 const app = document.getElementById('app')!;
@@ -121,7 +127,7 @@ function makeHint(signal: AbortSignal): Hint {
 }
 
 function makeCtx(slot: HTMLElement, index: number, ac: AbortController): FloorCtx {
-  const data = places[index];
+  const data = route[index];
   const lap = store.get().lap;
   const signal = ac.signal;
   const pick = <T,>(key: string): T | undefined => pickMoment<T>(data.lines, lap, key);
@@ -179,7 +185,7 @@ function teardown(c: Current | null) {
 
 /** Строит место в его слоте мира (над текущим), но не запускает. */
 function mountPlace(index: number): Current {
-  const data = places[index];
+  const data = route[index];
   const ac = new AbortController();
   const slot = h('section.floor', { 'aria-label': data.label });
   slot.style.setProperty('--i', String(index));
@@ -196,6 +202,7 @@ async function runPlace(c: Current) {
   const data = ctx.data;
   const lap = store.get().lap;
   status.textContent = `${data.label} · ${ui.lapLabel} ${lap}`;
+  for (const it of data.kind === 'passage' ? (data.collage ?? []) : []) memory.seeItem(it.id);
   floor.arrive?.();
   const silence = lap === 2 ? ctx.get<number>('silenceMs') : undefined;
   if (silence) await ctx.wait(silence);
@@ -244,7 +251,7 @@ const climb = createScrub({
 
 function canClimb() {
   const s = store.get();
-  return !intro.isOpen && !exitScreen.isOpen && !upAction && s.phase === 'stop' && !upBtn.hidden && s.floor < places.length - 1;
+  return !intro.isOpen && !exitScreen.isOpen && !upAction && s.phase === 'stop' && !upBtn.hidden && s.floor < route.length - 1;
 }
 
 /** Готовит подъём: следующее место смонтировано над текущим, герой — в режиме слежения. */
@@ -282,7 +289,7 @@ function commitClimb() {
 
 /** Картинки следующего места грузим заранее, пока игрок стоит на этом. */
 function prefetch(index: number) {
-  const p = places[index];
+  const p = route[index];
   const srcs = [...(p?.collage ?? []).map((c) => c.src)];
   for (const src of srcs) new Image().src = import.meta.env.BASE_URL + src;
 }
@@ -316,7 +323,7 @@ function lightQuote(c: Current, el: HTMLElement) {
 async function onDone(index: number, ac: AbortController) {
   if (ac.signal.aborted || store.get().floor !== index || !store.phase('stop')) return;
   const c = current!;
-  const data = places[index];
+  const data = route[index];
   const lap = store.get().lap;
   c.floor.stop();
   controls.replaceChildren();
@@ -329,7 +336,7 @@ async function onDone(index: number, ac: AbortController) {
 
   showQuote(c);
   c.floor.rest?.();
-  sideScenes.maybeShow(data.id);
+  sideScenes.maybeShow(data, route);
   upBtn.textContent = data.upLabel ?? ui.up;
   upBtn.hidden = false;
   focus(upBtn);
@@ -392,6 +399,8 @@ function restart(lap: Lap) {
   current = null;
   teardown(prev);
   store.restart(lap);
+  // новый круг — новый маршрут: другие проходы и другие вещи
+  newRoute();
   hero.reset();
   enterFloor();
 }

@@ -7,11 +7,12 @@ describe('память второго круга', () => {
     memory.set({ roomRemoved: ['cup', 'lamp'], wings: 'folded', jar: true });
     memory.see('S1');
     memory.see('S1');
-    expect(memory.get()).toEqual({ roomRemoved: ['cup', 'lamp'], wings: 'folded', jar: true, seenEver: ['S1'] });
+    memory.seeItem('jar');
+    expect(memory.get()).toEqual({ roomRemoved: ['cup', 'lamp'], wings: 'folded', jar: true, seenEver: ['S1'], seenItems: ['jar'] });
   });
 
   it('«начать с нуля» стирает всё', () => {
     memory.reset();
-    expect(memory.get()).toEqual({ roomRemoved: null, wings: null, jar: false, seenEver: [] });
+    expect(memory.get()).toEqual({ roomRemoved: null, wings: null, jar: false, seenEver: [], seenItems: [] });
   });
 });

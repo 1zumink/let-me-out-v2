@@ -1,14 +1,14 @@
 // Движок сайд-сцен S1–S12: на полях, только на остановках, не больше одной на место, каждая — раз за круг.
 import { h, words } from '../dom';
 import { announce, motion } from '../a11y';
-import { places, type Scene, type SceneStep, type Ui } from '../data';
+import type { Place, Scene, SceneStep, Ui } from '../data';
 import { memory } from '../memory';
 import type { Rng } from '../rng';
 import type { Store } from '../state';
 import { Creature, type CreatureKind } from '../ui/Creature';
 import { pickScene, sceneDuration } from './pick';
+import { sceneTags } from '../route';
 
-const order = places.map((p) => p.id);
 
 export function createSideScenes({ layer, store, scenes, rng, ui }: { layer: HTMLElement; store: Store; scenes: Scene[]; rng: Rng; ui: Ui }) {
   let shownAt: Record<string, string> = {};
@@ -116,16 +116,18 @@ export function createSideScenes({ layer, store, scenes, rng, ui }: { layer: HTM
   }
 
   return {
-    /** Вызывается на остановке места; сам решает, показывать ли сцену. */
-    maybeShow(place: string) {
+    /** Вызывается на остановке места; сам решает, показывать ли сцену. route — маршрут этого круга. */
+    maybeShow(placeData: Place, route: Place[]) {
       const s = store.get();
       if (s.phase !== 'stop' || open) return;
+      const place = placeData.id;
       const key = `${s.lap}:${place}`;
       const scene = pickScene({
         scenes,
         lap: s.lap,
         place,
-        order,
+        tags: sceneTags(placeData),
+        order: route.map((p) => p.id),
         shownAt,
         seenEver: memory.get().seenEver,
         floorHadScene: placesWithScene.has(key),

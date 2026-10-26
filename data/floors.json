@@ -28,63 +28,6 @@
     }
   },
   {
-    "id": "p-rings",
-    "kind": "passage",
-    "label": "проход · колодезные кольца",
-    "module": "passageRings",
-    "game": null,
-    "collage": [
-      {
-        "id": "jar",
-        "label": "банка «Крыжовник, 1987»",
-        "src": "assets/collage/jar.svg",
-        "x": 24,
-        "y": 40,
-        "w": 12
-      },
-      {
-        "id": "clock",
-        "label": "часы без стрелок",
-        "src": "assets/collage/clock-nohands.svg",
-        "x": 76,
-        "y": 34,
-        "w": 12
-      },
-      {
-        "id": "sign",
-        "label": "табличка «Не прислоняться»",
-        "src": "assets/collage/sign.svg",
-        "x": 26,
-        "y": 52,
-        "w": 22
-      },
-      {
-        "id": "drawing",
-        "label": "детский рисунок: солнце, дом, человечек",
-        "src": "assets/collage/drawing.svg",
-        "x": 74,
-        "y": 50,
-        "w": 18
-      }
-    ],
-    "lines": {
-      "lap1": {
-        "items": {
-          "jar": "Банка. «Крыжовник, 1987». Открывать не буду. Вдруг там тоже кто-то сидит.",
-          "clock": "Часы без стрелок. Очень честные часы.",
-          "sign": "Табличка «Не прислоняться». Тут, если честно, больше не к чему.",
-          "drawing": "Детский рисунок: солнце, дом, человечек. Человечек снаружи дома. Повезло ему."
-        },
-        "outro": [
-          "Кто-то тут жил. Или лез. Или и то и другое."
-        ]
-      }
-    },
-    "params": {
-      "texture": "rings"
-    }
-  },
-  {
     "id": "f1",
     "kind": "floor",
     "label": "этаж 1 · руки",
@@ -168,52 +111,6 @@
     },
     "params": {
       "texture": "chimney"
-    }
-  },
-  {
-    "id": "p-roots",
-    "kind": "passage",
-    "label": "проход · корни",
-    "module": "passageRoots",
-    "game": null,
-    "collage": [
-      {
-        "id": "roots",
-        "label": "корни",
-        "src": "assets/collage/roots.svg",
-        "x": 30,
-        "y": 36,
-        "w": 26
-      },
-      {
-        "id": "nest",
-        "label": "пустое птичье гнездо",
-        "src": "assets/collage/nest.svg",
-        "x": 72,
-        "y": 48,
-        "w": 16
-      },
-      {
-        "id": "glove",
-        "label": "одна перчатка",
-        "src": "assets/collage/glove.svg",
-        "x": 34,
-        "y": 60,
-        "w": 10
-      }
-    ],
-    "lines": {
-      "lap1": {
-        "items": {
-          "roots": "Корни. Кто-то наверху растёт, а мы тут видим, чем он держится.",
-          "nest": "Птичье гнездо. Пустое. Думаю, они улетели, а не наоборот.",
-          "glove": "Перчатка. Одна. Вторая, наверное, долезла."
-        },
-        "outro": []
-      }
-    },
-    "params": {
-      "texture": "earth"
     }
   },
   {

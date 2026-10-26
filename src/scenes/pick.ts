@@ -9,7 +9,9 @@ export interface PickInput {
   lap: number;
   /** id текущего места */
   place: string;
-  /** порядок мест снизу вверх */
+  /** теги места для where; по умолчанию — только id (у случайного прохода — «passage» и этаж под ним) */
+  tags?: string[];
+  /** порядок мест этого круга снизу вверх */
   order: string[];
   /** сцены, показанные в этом круге, и где */
   shownAt: Record<string, string>;
@@ -22,10 +24,10 @@ export interface PickInput {
 const before = (order: string[], a: string, b: string) => order.indexOf(a) < order.indexOf(b);
 
 /** Сцены, которые можно показать сейчас. */
-export function available({ scenes, lap, place, order, shownAt, seenEver }: Omit<PickInput, 'rng' | 'floorHadScene'>): Scene[] {
+export function available({ scenes, lap, place, tags = [place], order, shownAt, seenEver }: Omit<PickInput, 'rng' | 'floorHadScene'>): Scene[] {
   const prev = order[order.indexOf(place) - 1];
   return scenes.filter((s) => {
-    if (!s.laps.includes(lap) || !s.where.includes(place) || s.id in shownAt) return false;
+    if (!s.laps.includes(lap) || !s.where.some((w) => tags.includes(w)) || s.id in shownAt) return false;
     if (s.after && !before(order, s.after, place)) return false;
     if (!s.pairOf) return true;
     // отзвук через круг: первая часть была когда-то раньше

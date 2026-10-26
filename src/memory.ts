@@ -9,10 +9,12 @@ export interface Memory {
   jar: boolean;
   /** сцены, увиденные за все круги (для отзвуков на втором круге) */
   seenEver: string[];
+  /** вещи из проходов, увиденные за все круги — на следующем сначала другие */
+  seenItems: string[];
 }
 
 export const MEMORY_KEY = 'lmo.memory';
-const empty = (): Memory => ({ roomRemoved: null, wings: null, jar: false, seenEver: [] });
+const empty = (): Memory => ({ roomRemoved: null, wings: null, jar: false, seenEver: [], seenItems: [] });
 
 function load(): Memory {
   try {
@@ -33,6 +35,9 @@ export const memory = {
   },
   see(id: string) {
     if (!state.seenEver.includes(id)) memory.set({ seenEver: [...state.seenEver, id] });
+  },
+  seeItem(id: string) {
+    if (!state.seenItems.includes(id)) memory.set({ seenItems: [...state.seenItems, id] });
   },
   reset() {
     state = empty();

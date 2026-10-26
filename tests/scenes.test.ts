@@ -61,6 +61,14 @@ describe('сайд-сцены', () => {
     expect(hits / 2000).toBeLessThan(0.45);
   });
 
+  it('случайный проход: сцены «passage» и сцены этажа прямо под ним', () => {
+    const extra: Scene[] = [...scenes, sc({ id: 'S3', where: ['passage'] }), sc({ id: 'S7', where: ['f1'] })];
+    const got = ids(available({ ...base, scenes: extra, place: 'p-jar', tags: ['passage', 'f1'], order: ['f0', 'f1', 'p-jar', 'f2'] }));
+    expect(got).toContain('S3');
+    expect(got).toContain('S7');
+    expect(ids(available({ ...base, scenes: extra, place: 'f2' }))).not.toContain('S3');
+  });
+
   it('время показа: 4000 + 400 × слов', () => {
     expect(sceneDuration(10)).toBe(8000);
   });

@@ -9,7 +9,7 @@ import { GHOST_PROPS } from '../games/ghost';
 import { FLAP } from '../games/flap';
 import { Creature } from '../ui/Creature';
 import { gameFloor } from './gameFloor';
-import { passage } from './passage';
+import { passage as passageFloor } from './passage';
 import type { Floor, FloorCtx } from './types';
 
 const img = (src: string, cls = 'cutout') => h(`img.${cls}`, { src: import.meta.env.BASE_URL + src, alt: '', 'aria-hidden': 'true', loading: 'lazy' });
@@ -29,8 +29,14 @@ export const floor0 = () =>
     },
   });
 
-// ↑ Проход: колодезные кольца
-export const passageRings = () => passage({ world: { wall: 16 }, decorate: (ctx) => ctx.el.append(h('div.rings', { 'aria-hidden': 'true' })) });
+// ↑ Случайный проход (route.ts): одна вещь в нише. Внизу шахта из бетонных колец, выше — земля с корнями
+export const passage = () =>
+  passageFloor({
+    world: { wall: 16 },
+    decorate: (ctx) => {
+      if ((ctx.data.params as { texture?: string } | undefined)?.texture === 'rings') ctx.el.append(h('div.rings', { 'aria-hidden': 'true' }));
+    },
+  });
 
 // 1. Руки и 7. Свет — «Держи»: выступы-остановки на стене
 const holdFloor = (smooth: boolean) => () =>
@@ -60,8 +66,6 @@ export const floor2 = (): Floor => {
   return { ...base, arrive: () => (base.arrive?.(), document.querySelector('.stage')?.classList.add('is-narrow')), unmount: () => (document.querySelector('.stage')?.classList.remove('is-narrow'), base.unmount()) };
 };
 
-// ↑ Проход: корни
-export const passageRoots = () => passage({ world: { wall: 18 } });
 
 // 3. Деревянная комната. Второй круг — такой, какой её оставили, без игры
 export const floor3 = () => {
