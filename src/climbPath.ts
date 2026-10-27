@@ -48,18 +48,23 @@ interface Seg {
   to: [number, number];
   /** Высота дуги прыжка, %. */
   arc?: number;
+  /** Прыжок на стену: лента нарисована «со стены на уступ» — играем её назад, от стойки до полёта. */
+  back?: boolean;
   len: number;
   p0: number;
   p1: number;
 }
 
 const STATE: Record<SegKind, HeroState> = { walk: 'walk', jump: 'jump', wall: 'wall', mantle: 'mantle', traverse: 'hang' };
-/** Сколько % пути — один цикл ленты: шаг по уступу и перехват по стене. */
-const STRIDE: Partial<Record<SegKind, number>> = { walk: 7, wall: 9, traverse: 8 };
+/** Сколько % пути — один цикл ленты, от роста героя: два шага по уступу, перехват руками по стене и под потолком. */
+export const stride = (kind: SegKind, box: HeroBox) =>
+  kind === 'walk' ? box.w * 0.55 : kind === 'wall' ? box.h * 0.35 : kind === 'traverse' ? box.w * 0.4 : 0;
 /** Зазор меньше этого — шаг, а не прыжок. */
 const GAP = 3;
 /** Прыжок короткий по расстоянию, но читается дольше: столько «пути» он весит минимум. */
 const JUMP_LEN = 10;
+/** Какую долю ленты прыжка играет прыжок на стену (с конца). */
+const JUMP_BACK = 0.55;
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -93,9 +98,9 @@ export function climbPath(a: Footing, b: Footing, box: HeroBox) {
   const bx = wallX(b.walls, side, box);
   const by = b.y - 100;
   let at: [number, number] = [a.x, a.y];
-  const go = (kind: SegKind, to: [number, number], arc?: number) => {
+  const go = (kind: SegKind, to: [number, number], arc?: number, back?: boolean) => {
     if (Math.hypot(to[0] - at[0], to[1] - at[1]) < 0.01) return;
-    segs.push({ kind, from: at, to, arc });
+    segs.push({ kind, from: at, to, arc, back });
     at = to;
   };
 
@@ -104,7 +109,7 @@ export function climbPath(a: Footing, b: Footing, box: HeroBox) {
     if (a.ledge) {
       const edge = ledgeEdge(a, side, box);
       go('walk', [edge, a.y]);
-      if (Math.abs(edge - ax) > GAP) go('jump', [ax, a.y - box.h * 0.35], box.h * 0.25);
+      if (Math.abs(edge - ax) > GAP) go('jump', [ax, a.y - box.h * 0.35], box.h * 0.25, true);
       else go('wall', [ax, a.y - box.h * 0.1]);
     } else go('wall', [ax, a.y]);
   }
@@ -156,8 +161,9 @@ export function climbPath(a: Footing, b: Footing, box: HeroBox) {
     const x = lerp(s.from[0], s.to[0], u);
     const base = lerp(s.from[1], s.to[1], u);
     const y = base - (s.arc ? s.arc * 4 * u * (1 - u) : 0);
-    const stride = STRIDE[s.kind];
-    const t = stride ? ((s.len * u) / stride) % 1 : u;
+    const k = stride(s.kind, box);
+    // кадр 8 → ~4 из 8: стоит, присел, оттолкнулся, летит; дальше хватается и лезет лентой wall
+    const t = k ? ((s.len * u) / k) % 1 : s.back ? 1 - u * JUMP_BACK : u;
     const dx = s.to[0] - s.from[0];
     // на стене лицом к стене; в шаге и прыжке — куда движется
     const left = s.kind === 'wall' || (s.kind === 'traverse' && Math.abs(dx) < 0.5) ? side === 'left' : dx < 0;

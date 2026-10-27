@@ -76,41 +76,54 @@ export const floor2 = (): Floor => {
 };
 
 
-// 3. Деревянная комната — домик на уступе: снаружи фасад с дверью, герой подходит, дверь открывается,
-// передняя стена гаснет — комната в разрезе. Второй круг — такой, какой её оставили, без игры
-/** Фасад: картинка автора house.webp, если есть, иначе силуэт из досок. Дверь стоит там, где встаёт герой. */
-function houseFront(doorX: number) {
+// 3. Деревянная комната — домик на уступе: снаружи фасад с дверью посередине. Герой подходит к двери, она открывается,
+// фасад гаснет и проявляется комната в разрезе; герой проходит к своему месту. Второй круг — комната такая, какой её оставили, без игры
+const HOUSE = import.meta.env.BASE_URL + 'assets/collage/';
+
+/** Фасад: фото автора (house.webp, house-door-open.webp), если есть, иначе силуэт из досок с нарисованной дверью. */
+function houseFront() {
   const front = h('div.house', { 'aria-hidden': 'true' });
   const planks = textureUrl('planks');
   if (planks) front.style.setProperty('--planks', `url("${planks}")`);
   const door = h('div.house__door');
-  // фасад занимает 6…94 % этажа — дверь в его долях
-  door.style.left = `${((doorX - 6) / 88) * 100}%`;
-  const photo = h('img.house__photo', { src: import.meta.env.BASE_URL + 'assets/collage/house.webp', alt: '', decoding: 'async' });
+  const photo = h('img.house__photo', { src: HOUSE + 'house.webp', alt: '', decoding: 'async' });
+  const open = new Image();
   // своей картинки нет — остаётся нарисованный фасад
   photo.addEventListener('error', () => photo.remove());
-  photo.addEventListener('load', () => front.classList.add('has-photo'));
+  photo.addEventListener('load', () => {
+    front.classList.add('has-photo');
+    open.src = HOUSE + 'house-door-open.webp';
+  });
   front.append(photo, door);
-  return { front, door };
+  return {
+    front,
+    openDoor() {
+      door.classList.add('is-open');
+      if (front.classList.contains('has-photo') && open.complete && open.naturalWidth) photo.src = open.src;
+    },
+  };
 }
 
 export const floor3 = (): Floor => {
   const revisit = (ctx: FloorCtx) => ctx.lap === 2 && memory.get().roomRemoved !== null;
+  // на узком экране герой стоит у самого входа, чтобы не закрывать вещи
   const narrow = window.matchMedia('(max-width: 560px) and (orientation: portrait)').matches;
-  const doorX = narrow ? 10 : 24;
+  const spot = narrow ? 10 : 24;
   let house: ReturnType<typeof houseFront> | null = null;
   let ctx: FloorCtx;
   const base = gameFloor({
-    // на узком экране герой стоит у самого входа, чтобы не закрывать вещи
-    heroAt: [doorX, 84],
+    // подъём приводит к двери домика — она посередине
+    heroAt: [50, 84],
     light: [48, 60, 60],
     world: { wall: 6, ledges: [{ x0: 4, x1: 96, y: 84, depth: 16 }] },
     hasGame: (ctx) => !revisit(ctx),
     decorate: (c) => {
       ctx = c;
       if (revisit(c)) c.el.append(buildRoom(c, memory.get().roomRemoved ?? [], false).room);
-      house = houseFront(doorX);
+      house = houseFront();
       c.el.append(house.front);
+      // пока не вошёл, комнаты не видно: за краями фасада только уступ
+      c.el.classList.add('is-outside');
     },
     enterLines: (ctx) => {
       if (!revisit(ctx)) return ctx.lines('enter');
@@ -122,12 +135,16 @@ export const floor3 = (): Floor => {
     ...base,
     arrive() {
       base.arrive?.();
-      // герой у двери: она открывается внутрь, и передняя стена гаснет
       const hs = house;
       if (!hs) return;
       const quick = motion.reduced();
-      ctx.after(quick ? 0 : 500, () => hs.door.classList.add('is-open'));
-      ctx.after(quick ? 0 : 1300, () => hs.front.classList.add('is-gone'));
+      ctx.after(quick ? 0 : 500, () => hs.openDoor());
+      ctx.after(quick ? 0 : 1300, () => {
+        hs.front.classList.add('is-gone');
+        ctx.el.classList.remove('is-outside');
+        // вошёл — проходит к своему месту у входа
+        void ctx.hero.walkTo(spot, 1200, ctx.signal);
+      });
     },
   };
 };

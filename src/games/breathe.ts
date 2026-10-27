@@ -64,7 +64,7 @@ export const createBreathe: GameFactory = (ctx, onDone) => {
     // свет идёт за героем; радиус дымохода — как у этажа (floor2), тускнеет и вдыхает — CSS
     if (Math.abs(y - lightY) > 2) ctx.light(X, (lightY = y) - 16, 24);
 
-    if (c.slipping) pose('slip');
+    if (c.slipping) pose('fall');
     else if (c.p < c.target) pose('climb');
     else if (dim(c)) pose('idle');
     else pose('breathe');

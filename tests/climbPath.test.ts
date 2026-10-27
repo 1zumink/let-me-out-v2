@@ -82,4 +82,13 @@ describe('путь подъёма', () => {
     const hang: Footing = { walls: [14, 14], x: wallX([14, 14], 'left', box), y: 46, state: 'hang' };
     expect(climbPath(hang, b, box).segments[0].kind).toBe('wall');
   });
+
+  it('прыжок на стену играет ленту назад, прыжок на уступ — вперёд', () => {
+    const path = climbPath(a, b, box);
+    const [toWall, toLedge] = path.segments.filter((s) => s.kind === 'jump');
+    const t = (s: typeof toWall, u: number) => path.at(s.p0 + (s.p1 - s.p0) * u).t;
+    expect(t(toWall, 0.1)).toBeGreaterThan(t(toWall, 0.9));
+    expect(t(toWall, 0.01)).toBeCloseTo(1, 1);
+    expect(t(toLedge, 0.1)).toBeLessThan(t(toLedge, 0.9));
+  });
 });

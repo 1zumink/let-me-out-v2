@@ -11,12 +11,15 @@ const RAW = 'raw/hero';
 const OUT = 'public/assets/hero';
 
 const hero = JSON.parse(await readFile('data/hero.json', 'utf8'));
-const only = process.argv.slice(2);
+// --still palm: одиночная картинка линией героя (raw/collage/<id>.png → public/assets/collage/<id>.webp), без обводки вырезок
+const still = process.argv.includes('--still');
+const only = process.argv.slice(2).filter((a) => a !== '--still');
+const STILL_MAX = 480;
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-async function load(state) {
-  const { data, info } = await sharp(`${RAW}/${state}.png`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+async function load(state, file = `${RAW}/${state}.png`) {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h } = info;
   const alpha = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) {
@@ -151,6 +154,25 @@ async function build(state, scaleBase) {
   await sharp(buf).png({ compressionLevel: 9 }).toFile(`${OUT}/${state}.png`);
   await sharp(buf).webp({ quality: 85, alphaQuality: 90 }).toFile(`${OUT}/${state}.webp`);
   console.log(`  ${state}: ${n} кадров, масштаб ${scale.toFixed(3)}${top ? ', по рукам' : ''}`);
+}
+
+/** Одна картинка линией: все компоненты — один кадр, тот же цвет линии, сторона не больше STILL_MAX. */
+async function buildStill(id) {
+  const img = await load(id, `raw/collage/${id}.png`);
+  const f = cutFrame(img, components(img.alpha, img.w, img.h));
+  if (!f) return console.warn(`  ${id}: пусто`);
+  const k = Math.min(1, STILL_MAX / Math.max(f.width, f.height));
+  await mkdir('public/assets/collage', { recursive: true });
+  await sharp(f.rgba, { raw: { width: f.width, height: f.height, channels: 4 } })
+    .resize(Math.round(f.width * k), Math.round(f.height * k), { kernel: 'lanczos3' })
+    .webp({ quality: 88, alphaQuality: 90 })
+    .toFile(`public/assets/collage/${id}.webp`);
+  console.log(`  ${id}: линия → public/assets/collage/${id}.webp`);
+}
+
+if (still) {
+  for (const id of only) await buildStill(id);
+  process.exit(0);
 }
 
 await mkdir(OUT, { recursive: true });

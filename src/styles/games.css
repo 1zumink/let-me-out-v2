@@ -480,7 +480,7 @@
   border-color: rgb(242 230 201 / 0.5);
 }
 
-/* домик на уступе (этаж 3): фасад из досок с дверью; войдя, передняя стена гаснет — комната в разрезе */
+/* домик на уступе (этаж 3): фасад с дверью посередине; войдя, передняя стена гаснет — комната в разрезе */
 .house {
   position: absolute;
   left: 6%;
@@ -497,27 +497,36 @@
   clip-path: polygon(0 14%, 50% 0, 100% 14%, 100% 100%, 0 100%);
   transition: opacity 1.4s ease;
 }
+/* фото автора: домик своих пропорций по центру уступа, низ — на уступе */
 .house.has-photo {
+  left: 50%;
+  right: auto;
+  top: auto;
+  height: 70%;
+  aspect-ratio: 1374 / 1145;
+  /* на узком экране уже — фото вписывается в коробку, низом на уступ */
+  max-width: 92%;
+  translate: -50% 0;
   background: none;
-  filter: none;
+  filter: grayscale(1) brightness(0.85) contrast(1.05);
   clip-path: none;
 }
 .house__photo {
+  display: none;
+}
+.house.has-photo .house__photo {
+  display: block;
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
-  filter: grayscale(1) brightness(0.6);
+  object-fit: contain;
+  object-position: center bottom;
 }
-.house.has-photo .house__door {
-  /* у фото своя дверь — нарисованную не показываем, но щель света оставляем */
-  border-color: transparent;
-  background: transparent;
-}
-/* дверь: от пола, шириной с героя; left — в долях фасада (считает places.ts) */
+/* нарисованная дверь — только у фасада без фото; у фото своя */
 .house__door {
   position: absolute;
+  left: 50%;
   bottom: 0;
   width: 14%;
   height: 46%;
@@ -528,6 +537,9 @@
   transform-origin: left center;
   transition: transform 0.8s ease;
 }
+.house.has-photo .house__door {
+  display: none;
+}
 .house__door.is-open {
   transform: perspective(400px) rotateY(-70deg);
 }
@@ -535,7 +547,15 @@
   opacity: 0;
   pointer-events: none;
 }
+/* комната проявляется, когда фасад гаснет */
+.floor .room {
+  transition: opacity 1.4s ease;
+}
+.floor.is-outside .room {
+  opacity: 0;
+}
 .is-reduced .house,
-.is-reduced .house__door {
+.is-reduced .house__door,
+.is-reduced .floor .room {
   transition: none;
 }

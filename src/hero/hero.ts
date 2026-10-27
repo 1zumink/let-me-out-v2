@@ -128,7 +128,8 @@ export class Hero {
 
   /** Идёт по уступу до x за ms: шаг в такт пути, без скольжения. */
   walkTo(x: number, ms = 900, signal?: AbortSignal) {
-    return this.go(x, this.position[1], { state: 'walk', ms, signal });
+    // два шага на цикл ленты — ~0.55 ширины героя, как в climbPath.stride
+    return this.go(x, this.position[1], { state: 'walk', ms, stride: this.box().w * 0.55, signal });
   }
 
   /** Перемещение по прямой с лентой state, кадры — по пройденному пути (stride % на цикл).
