@@ -514,29 +514,60 @@ a {
   padding: 72px var(--gutter) 0;
   pointer-events: none;
 }
+/* клочок бумаги на стене: рваный край (--torn) и наклон (--tilt) задаёт sideScenes.ts по rng,
+   фактура — src/assets/textures/paper.webp (--paper), без неё — шум того же тона */
 .scene {
+  --paper-ink: #1f1d1a;
+  /* живое внутри клочка нарисовано тем же карандашом, что и текст */
+  --line: var(--paper-ink);
+  --muted: #59554d; /* на бумаге ≈ 5:1 */
   position: relative;
   max-width: min(30rem, 100%);
-  padding: 18px 52px 18px 20px;
+  padding: 22px 52px 26px 24px;
   font-size: 20px;
-  color: var(--line);
-  background: rgb(11 11 12 / 0.94);
-  border: 2px solid var(--line);
-  border-radius: var(--sketch-radius);
+  color: var(--paper-ink);
   pointer-events: auto;
-  opacity: 0;
-  translate: 0 -6px;
-  transition:
-    opacity 0.4s ease,
-    translate 0.4s ease;
+  transform: rotate(var(--tilt, -2deg));
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.7));
 }
-.scene.is-in {
-  opacity: 1;
-  translate: 0 0;
+.scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: #d6d0c3;
+  background-image:
+    radial-gradient(ellipse at 30% 20%, rgb(255 255 255 / 0.18), transparent 60%),
+    var(--paper, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.25  0 0 0 0 0.23  0 0 0 0 0.2  0 0 0 -1.4 1.05'/%3E%3C/filter%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.018' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.28  0 0 0 0 0.24  0 0 0 -2 1.1'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23g)' opacity='0.5'/%3E%3Crect width='100%' height='100%' filter='url(%23f)' opacity='0.35'/%3E%3C/svg%3E"));
+  background-size: auto, 240px 240px;
+  background-blend-mode: normal, multiply;
+  clip-path: var(--torn, none);
 }
-.is-reduced .scene {
-  transition: none;
-  translate: none;
+/* полоска скотча сверху: держит клочок на стене */
+.scene::after {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 72px;
+  height: 20px;
+  translate: -50% 0;
+  rotate: calc(var(--tilt, 0deg) * -1.5);
+  background: rgb(228 224 210 / 0.55);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  pointer-events: none;
+}
+.scene :focus-visible {
+  outline-color: var(--paper-ink);
+}
+.scene .btn {
+  color: var(--paper-ink);
+  background: rgb(255 255 255 / 0.18);
+  border-color: var(--paper-ink);
+}
+.scene__line[hidden],
+.scene__choices[hidden] {
+  display: none;
 }
 .scene .creature {
   position: static;
@@ -642,7 +673,7 @@ a {
   gap: 8px;
   margin-top: 8px;
 }
-.scene__image {
+.scene .scene__image {
   position: static;
   display: block;
   translate: none;
