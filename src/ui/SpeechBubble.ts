@@ -6,10 +6,14 @@ import { beats, PAUSE_MS, type Beat } from '../lines';
 
 const readMs = (text: string) => 1800 + text.length * 55;
 const FLASH_MS = 700;
+/** Прокрутка — темп чтения: каждый пиксель вверх съедает столько мс у текущего облачка или паузы. */
+const MS_PER_PX = 25;
 
 export function createBubbles(layer: HTMLElement) {
   const speakers = new Map<string, HTMLElement>();
-  let current: { el: HTMLElement | null; skip: () => void } | null = null;
+  let current: { el: HTMLElement | null; skip: () => void; hurry: (ms: number) => void } | null = null;
+  // сколько реплик и пауз идёт сейчас: пока идут, прокрутка читает их, а не ведёт героя
+  let live = 0;
 
   function place(bubble: HTMLElement, who: HTMLElement) {
     const stage = layer.getBoundingClientRect();
@@ -39,7 +43,11 @@ export function createBubbles(layer: HTMLElement) {
       let left = ms;
       let last = performance.now();
       let raf = 0;
+      let over = false;
       const done = () => {
+        if (over) return;
+        over = true;
+        live--;
         cancelAnimationFrame(raf);
         signal?.removeEventListener('abort', done);
         resolve();
@@ -51,8 +59,14 @@ export function createBubbles(layer: HTMLElement) {
         if (left <= 0) return done();
         raf = requestAnimationFrame(tick);
       };
+      // прокрутка дочитала — реплика уходит сразу, не дожидаясь кадра
+      const hurry = (by: number) => {
+        left -= by;
+        if (left <= 0) done();
+      };
+      live++;
       signal?.addEventListener('abort', done);
-      current = { el: null, skip: done };
+      current = { el: null, skip: done, hurry };
       raf = requestAnimationFrame(tick);
     });
   }
@@ -71,7 +85,7 @@ export function createBubbles(layer: HTMLElement) {
       el.remove();
     });
     el.addEventListener('pointerdown', () => current?.skip());
-    current = { el, skip: current!.skip };
+    current = { ...current!, el };
     return p;
   }
 
@@ -87,7 +101,13 @@ export function createBubbles(layer: HTMLElement) {
         await show(beat, signal);
       }
     },
+    /** Идёт реплика или пауза. */
+    get active() {
+      return live > 0;
+    },
     skip: () => current?.skip(),
+    /** Прокрутили вверх на px: текущая реплика или пауза проходит быстрее — чем быстрее листают, тем быстрее читают. */
+    read: (px: number) => current?.hurry(px * MS_PER_PX),
     clear() {
       current?.skip();
       layer.querySelectorAll('.bubble').forEach((b) => b.remove());

@@ -412,10 +412,20 @@ function runUpAction() {
 
 // первый экран и «выше» после финала — по жесту целиком: трекпад и палец шлют прокрутку по нескольку пикселей
 let swipe = 0;
+// жест уже читал реплики: его остаток не ведёт героя, даже если реплики кончились посреди жеста
+let leafed = false;
 input.onScroll((delta, ended) => {
   swipe = ended ? 0 : swipe + delta;
+  if (ended) leafed = false;
   if (intro.isOpen) return void (swipe > 30 && startStory());
   if (exitScreen.isOpen) return;
+  // облачка читаются, как лонгрид: прокрутка вверх ускоряет текущую реплику, вниз — ничего
+  if (!ended && bubbles.active) {
+    if (delta > 0) bubbles.read(delta);
+    leafed = true;
+    return;
+  }
+  if (leafed) return;
   if (upAction) return void (swipe > 30 && !upBtn.hidden && runUpAction());
   if (ended) return climb.release();
   if (delta > 0 ? beginClimb() : climb.progress > 0) climb.drive(delta);
