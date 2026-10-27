@@ -16,5 +16,9 @@
   "mantle":  { "frames": 6, "fps": 8,  "loop": false },
   "fall":    { "frames": 4, "fps": 8,  "loop": true },
   "chimney": { "frames": 4, "fps": 4,  "loop": true },
-  "palm":    { "frames": 4, "fps": 4,  "loop": false, "align": "top" }
+  "palm":    { "frames": 4, "fps": 4,  "loop": false, "align": "top" },
+  "stranger-climb": { "frames": 6, "fps": 8, "loop": true, "color": true },
+  "stranger-hang":  { "frames": 4, "fps": 5, "loop": true, "align": "top", "color": true },
+  "stranger-slip":  { "frames": 4, "fps": 8, "loop": true, "color": true },
+  "stranger-wave":  { "frames": 4, "fps": 4, "loop": true, "align": "top", "color": true }
 }

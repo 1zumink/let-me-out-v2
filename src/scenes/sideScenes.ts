@@ -2,7 +2,7 @@
 // облачком, улитка ползёт, птица ныряет, сверху светит фонарь. Только на остановках, не больше одной
 // на место, каждая — раз за круг (правила выбора — pick.ts).
 import { h } from '../dom';
-import { motion } from '../a11y';
+import { announce, motion } from '../a11y';
 import { heroSpec, type Place, type Scene, type SceneAct, type SceneActor, type SceneStep, type Ui } from '../data';
 import { memory } from '../memory';
 import type { Rng } from '../rng';
@@ -102,21 +102,19 @@ export function createSideScenes({ layer, controls, bubbles, hero, store, scenes
         layer.append(el);
         break;
       case 'sign':
-        // «ВЫХОД — 3 ЭТАЖА ↑» — настоящий текст на эмалированной табличке
-        el = h('div.scene-sign', { role: 'img' });
+        // «ВЫХОД — 3 ЭТАЖА ↑» — фото эмалированной таблички; текст на ней, для скринридера — в подписи
+        el = h('img.cutout.scene-cutout.scene-sign', { src: import.meta.env.BASE_URL + 'assets/collage/sign-exit.webp', alt: '', loading: 'lazy' });
         el.style.left = `${x}%`;
         el.style.top = `${y}%`;
+        el.style.width = `max(110px, calc(${def.w ?? 18} * 1vmin))`;
         layer.append(el);
         break;
       case 'note': {
-        // записка остаётся бумагой: это и есть бумажка в трещине
-        el = h('div.scene-note');
+        // записка: сложенная бумажка торчит из трещины; при реплике рядом разворачивается листок с текстом
+        el = h('img.cutout.scene-cutout.scene-note-folded', { src: import.meta.env.BASE_URL + 'assets/collage/note.webp', alt: 'сложенная записка в трещине', loading: 'lazy' });
         el.style.left = `${x}%`;
         el.style.top = `${y}%`;
-        el.style.setProperty('--tilt', `${paperTilt(rng).toFixed(1)}deg`);
-        el.style.setProperty('--torn', tornPolygon(rng));
-        const paper = textureUrl('paper');
-        if (paper) el.style.setProperty('--paper', `url("${paper}")`);
+        el.style.width = `max(44px, calc(${def.w ?? 8} * 1vmin))`;
         layer.append(el);
         break;
       }
@@ -254,11 +252,30 @@ export function createSideScenes({ layer, controls, bubbles, hero, store, scenes
   /** Табличка и записка показывают текст на себе; остальные говорят облачком. */
   async function line(step: Extract<SceneStep, { text: string }>, actors: Map<string, Actor>, signal: AbortSignal) {
     const actor = actors.get(step.who);
-    if (actor && (actor.def.kind === 'sign' || actor.def.kind === 'note')) {
-      actor.el.append(h('p', {}, step.text));
+    if (actor?.def.kind === 'sign') {
+      // табличка проступает ярче; её текст читается с фото
       actor.el.setAttribute('aria-label', step.text);
-      await animate(actor.el, [{ opacity: 0.4 }, { opacity: 1 }], 400);
+      actor.el.setAttribute('role', 'img');
+      announce(step.text);
+      await animate(actor.el, [{ filter: 'grayscale(1) brightness(0.45)' }, { filter: 'grayscale(1) brightness(0.9)' }], 700);
+      actor.el.classList.add('is-lit');
       return wait(1800 + step.text.length * 45, signal);
+    }
+    if (actor?.def.kind === 'note') {
+      // бумажка разворачивается в листок с текстом рядом с трещиной
+      const sheet = h('div.scene-note', {}, h('p', {}, step.text));
+      sheet.style.left = `${actor.x > 50 ? actor.x - 14 : actor.x + 14}%`;
+      sheet.style.top = `${actor.y - 6}%`;
+      sheet.style.setProperty('--tilt', `${paperTilt(rng).toFixed(1)}deg`);
+      sheet.style.setProperty('--torn', tornPolygon(rng));
+      const paper = textureUrl('paper');
+      if (paper) sheet.style.setProperty('--paper', `url("${paper}")`);
+      layer.append(sheet);
+      signal.addEventListener('abort', () => sheet.remove(), { once: true });
+      (actor.el as { ledge?: HTMLElement }).ledge = sheet;
+      announce(step.text);
+      await animate(sheet, [{ opacity: 0, transform: 'scale(0.3) rotate(-12deg)' }, { opacity: 1, transform: 'none' }], 500);
+      return wait(2400 + step.text.length * 50, signal);
     }
     const voice = actor?.def.kind === 'voice';
     await bubbles.say([{ who: step.who, text: step.text, small: step.small || (voice && actor?.def.from === 'bottom'), pale: step.pale }], signal);

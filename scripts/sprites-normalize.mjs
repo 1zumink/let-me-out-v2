@@ -22,6 +22,16 @@ async function load(state, file = `${RAW}/${state}.png`) {
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h } = info;
   const alpha = new Float32Array(w * h);
+  // color: true — цветной рисунок (другой человечек): цвета не трогаем, прозрачность — из файла или
+  // заливкой от краёв по нарисованной серой «шахматке»
+  if (hero[state]?.color) {
+    let opaque = 0;
+    for (let i = 0; i < w * h; i++) if (data[i * 4 + 3] > 250) opaque++;
+    if (opaque < w * h * 0.95) for (let i = 0; i < w * h; i++) alpha[i] = data[i * 4 + 3] / 255;
+    else checkerAlpha(data, w, h, alpha);
+    despeckle(alpha, w, h);
+    return { w, h, alpha, rgb: data };
+  }
   for (let i = 0; i < w * h; i++) {
     const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2], a = data[i * 4 + 3] / 255;
     const warm = clamp01((r - b - 5) / 8);
@@ -30,6 +40,62 @@ async function load(state, file = `${RAW}/${state}.png`) {
   }
   despeckle(alpha, w, h);
   return { w, h, alpha };
+}
+
+// фон без альфы: заливка от краёв по светлым почти серым пикселям; тело, контур и шапку не трогает
+function checkerAlpha(data, w, h, alpha) {
+  const n = w * h;
+  const bg = new Uint8Array(n);
+  const isBg = (i) => {
+    const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+    // клетки шахматки нейтральные, 110–200; контур человечка темнее и насыщеннее (коричневый), тело кремовое
+    return Math.max(r, g, b) - Math.min(r, g, b) <= 14 && (r + g + b) / 3 >= 95;
+  };
+  const stack = [];
+  const seed = (i) => { if (!bg[i] && isBg(i)) { bg[i] = 1; stack.push(i); } };
+  for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+  while (stack.length) {
+    const i = stack.pop();
+    const x = i % w;
+    if (x > 0) seed(i - 1);
+    if (x < w - 1) seed(i + 1);
+    if (i >= w) seed(i - w);
+    if (i < n - w) seed(i + w);
+  }
+  for (let i = 0; i < n; i++) alpha[i] = bg[i] ? 0 : 1;
+  // трещинки и пятна, нарисованные на шахматке, — мелкие островки; сам человечек — крупные
+  const label = new Int32Array(n).fill(-1);
+  const sizes = [];
+  for (let i = 0; i < n; i++) {
+    if (!alpha[i] || label[i] >= 0) continue;
+    const id = sizes.length;
+    let size = 0;
+    label[i] = id;
+    stack.push(i);
+    while (stack.length) {
+      const j = stack.pop();
+      size++;
+      const x = j % w;
+      for (const k of [x > 0 ? j - 1 : -1, x < w - 1 ? j + 1 : -1, j - w, j + w]) {
+        if (k >= 0 && k < n && alpha[k] && label[k] < 0) { label[k] = id; stack.push(k); }
+      }
+    }
+    sizes.push(size);
+  }
+  const min = Math.max(...sizes) * 0.02;
+  for (let i = 0; i < n; i++) if (alpha[i] && sizes[label[i]] < min) alpha[i] = 0;
+}
+
+// красные тона (шапка, шарф) → ржавый #a5543a, единственный акцентный цвет по ТЗ; светотень сохраняется
+const RUST = [0xa5, 0x54, 0x3a];
+const RUST_LUM = 0.2126 * RUST[0] + 0.7152 * RUST[1] + 0.0722 * RUST[2];
+function toRust(r, g, b) {
+  const t = clamp01((r - Math.max(g, b) - 20) / 60);
+  if (!t) return [r, g, b];
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const k = Math.min(1.05, lum / RUST_LUM);
+  return [r, g, b].map((v, c) => Math.round(v + (Math.min(255, RUST[c] * k) - v) * t));
 }
 
 // убирает одиночные точки: пиксель гаснет, если у него мало непрозрачных соседей
@@ -113,13 +179,18 @@ function cutFrame(img, comps) {
       if (mx >= 0 && my >= 0 && mx < fw && my < fh) mask[my * fw + mx] = 1;
     }
   }
-  // перекрашиваем в фирменный цвет линии, чтобы убрать блики и грязь
+  // линия героя — перекрашиваем в фирменный цвет, чтобы убрать блики и грязь; цветной рисунок — свои цвета
   const rgba = Buffer.alloc(fw * fh * 4);
   for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
     const sx = minX - 2 + x, sy = minY - 2 + y;
     if (!mask[y * fw + x] || sx < 0 || sy < 0 || sx >= w || sy >= img.h) continue;
     const o = (y * fw + x) * 4;
-    rgba[o] = 0xe8; rgba[o + 1] = 0xe4; rgba[o + 2] = 0xdc;
+    if (img.rgb) {
+      const i = (sy * w + sx) * 4;
+      [rgba[o], rgba[o + 1], rgba[o + 2]] = toRust(img.rgb[i], img.rgb[i + 1], img.rgb[i + 2]);
+    } else {
+      rgba[o] = 0xe8; rgba[o + 1] = 0xe4; rgba[o + 2] = 0xdc;
+    }
     rgba[o + 3] = Math.round(alpha[sy * w + sx] * 255);
   }
   return { rgba, width: fw, height: fh };
