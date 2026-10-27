@@ -89,7 +89,9 @@ heroLayer.append(hero.el);
 const bubbles = createBubbles(bubblesLayer);
 bubbles.speaker('hero', hero.el);
 const input = createInput(stage);
-const sideScenes = createSideScenes({ layer: scenesLayer, store, scenes, rng, ui });
+const sideScenes = createSideScenes({ layer: heroLayer, controls, bubbles, hero, store, scenes, rng, ui });
+// ?scene=S2 — показать эту сайд-сцену на первой же остановке (проверка постановки)
+const forceScene = new URLSearchParams(location.search).get('scene');
 // «начать с нуля» в футере — когда есть что сбрасывать (второй круг)
 store.subscribe((s) => (footer.hidden = s.lap !== 2));
 footer.hidden = store.get().lap !== 2;
@@ -366,7 +368,7 @@ async function onDone(index: number, ac: AbortController) {
 
   showQuote(c);
   c.floor.rest?.();
-  sideScenes.maybeShow(data, route);
+  sideScenes.maybeShow(data, route, forceScene);
   upBtn.textContent = data.upLabel ?? ui.up;
   upBtn.hidden = false;
   focus(upBtn);

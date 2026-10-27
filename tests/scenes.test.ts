@@ -4,7 +4,7 @@ import { mulberry32 } from '../src/rng';
 import type { Scene } from '../src/data';
 
 const order = ['f0', 'p1', 'f1', 'f2', 'f3', 'f4', 'f5'];
-const sc = (s: Partial<Scene> & { id: string }): Scene => ({ title: s.id, where: order, laps: [1, 2], steps: [], ...s });
+const sc = (s: Partial<Scene> & { id: string }): Scene => ({ title: s.id, where: order, laps: [1, 2], steps: [], stage: { actors: {} }, ...s });
 const scenes: Scene[] = [
   sc({ id: 'S1', where: ['f1', 'f2'] }),
   sc({ id: 'S1-echo', laps: [2], pairOf: 'S1', crossLap: true, where: ['f1', 'f2'] }),

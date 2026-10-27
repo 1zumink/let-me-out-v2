@@ -63,6 +63,15 @@ export function validateScenes(scenes, placeIds = null) {
       else for (const w of s.where) if (!placeIds.has(w)) out.push(`${at}: where — нет места ${w}`);
       if (s?.after && !placeIds.has(s.after)) out.push(`${at}: after — нет места ${s.after}`);
       checkSteps(`${at}.steps`, s?.steps, out);
+      // постановка: говорить может только актёр сцены или герой
+      const actors = s?.stage?.actors;
+      if (!actors || typeof actors !== 'object') out.push(`${at}: нужен stage.actors`);
+      else {
+        const kinds = ['stick', 'creature', 'cutout', 'sign', 'note', 'voice'];
+        for (const [id, a] of Object.entries(actors)) if (!kinds.includes(a?.kind)) out.push(`${at}: актёр ${id} — неизвестный kind ${a?.kind}`);
+        const who = (steps) => (steps ?? []).flatMap((st) => (st.choice ? st.choice.flatMap((c) => who(c.steps)).concat(who(st.otherwise)) : [st.who]));
+        for (const w of who(s.steps)) if (w !== 'hero' && !(w in actors)) out.push(`${at}: говорит «${w}», а такого актёра в stage нет`);
+      }
     }
   });
   return out;

@@ -13,15 +13,15 @@
     ],
     "steps": [
       {
-        "who": "ПОПУТЧИК",
+        "who": "other",
         "text": "Ты давно лезешь?"
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Не знаю. Часы наверху остались."
       },
       {
-        "who": "ПОПУТЧИК",
+        "who": "other",
         "text": "А мои внизу. Значит, мы где-то посередине."
       },
       {
@@ -30,24 +30,39 @@
             "label": "показать выступ",
             "steps": [
               {
-                "who": "ПОПУТЧИК",
+                "who": "other",
                 "text": "О! Спасибо!"
               },
               {
-                "who": "ПОПУТЧИК",
+                "who": "other",
                 "text": "Напиши, когда доберёшься!"
               }
-            ]
+            ],
+            "act": "ledge"
           }
         ],
         "otherwise": [
           {
-            "who": "ПОПУТЧИК",
-            "text": "Ладно, я своим темпом."
+            "who": "other",
+            "text": "Ладно, я своим темпом.",
+            "act": "wave"
           }
         ]
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "other": {
+          "kind": "stick",
+          "pose": "held",
+          "rope": true,
+          "enter": "climb-in",
+          "side": "opposite",
+          "y": 50,
+          "anchor": "hands"
+        }
+      }
+    }
   },
   {
     "id": "S1-echo",
@@ -64,10 +79,23 @@
     "crossLap": true,
     "steps": [
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Я так и не написал. Не знаю, куда."
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "glove": {
+          "kind": "cutout",
+          "src": "assets/collage/glove.webp",
+          "alt": "перчатка попутчика на выступе",
+          "side": "opposite",
+          "y": 72,
+          "w": 9,
+          "ledge": true
+        }
+      }
+    }
   },
   {
     "id": "S2",
@@ -84,19 +112,33 @@
     ],
     "steps": [
       {
-        "who": "ЧЕЛОВЕЧЕК",
+        "who": "other",
         "text": "Слушай, а кто тебя тянет?"
       },
       {
-        "who": "ЧЕЛОВЕЧЕК",
+        "who": "other",
         "text": "А… А я думал, ты сам."
       },
       {
-        "who": "ЧЕЛОВЕЧЕК",
+        "who": "other",
         "text": "Подожди, я ещё хотел спросить…",
-        "small": true
+        "small": true,
+        "act": "slip"
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "other": {
+          "kind": "stick",
+          "pose": "hang",
+          "enter": "appear",
+          "side": "opposite",
+          "y": 52,
+          "anchor": "hands",
+          "ledge": true
+        }
+      }
+    }
   },
   {
     "id": "S2-echo",
@@ -116,10 +158,13 @@
     "pairOf": "S2",
     "steps": [
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Как думаешь, что он хотел спросить?"
       }
-    ]
+    ],
+    "stage": {
+      "actors": {}
+    }
   },
   {
     "id": "S3",
@@ -133,7 +178,7 @@
     ],
     "steps": [
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Посмотри. Там тоже кто-то лезет."
       },
       {
@@ -143,22 +188,44 @@
             "effect": "jar",
             "steps": [
               {
-                "who": "КРОШЕЧНЫЙ",
+                "who": "tiny",
                 "text": "Уф. Здесь просторнее."
               },
               {
-                "who": "ГЕРОЙ",
+                "who": "hero",
                 "text": "А тебе не кажется, что…"
               },
               {
-                "who": "КРОШЕЧНЫЙ",
+                "who": "tiny",
                 "text": "Не кажется. Не порти."
               }
-            ]
+            ],
+            "act": "out"
           }
         ]
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "jar": {
+          "kind": "cutout",
+          "src": "assets/collage/jar.webp",
+          "alt": "банка, в ней маленький колодец",
+          "side": "opposite",
+          "y": 70,
+          "w": 9,
+          "ledge": true
+        },
+        "tiny": {
+          "kind": "stick",
+          "pose": "climb",
+          "tiny": true,
+          "hidden": true,
+          "side": "opposite",
+          "y": 64
+        }
+      }
+    }
   },
   {
     "id": "S4",
@@ -172,14 +239,23 @@
     ],
     "steps": [
       {
-        "who": "ЗАПИСКА",
+        "who": "note",
         "text": "«Если ты это читаешь — я тоже лез. Не верь табличкам. — Предыдущий»."
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Предыдущий — это кто? … Я стараюсь не думать, что это я."
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "note": {
+          "kind": "note",
+          "side": "opposite",
+          "y": 62
+        }
+      }
+    }
   },
   {
     "id": "S4-write",
@@ -217,7 +293,16 @@
           }
         ]
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "note": {
+          "kind": "note",
+          "side": "opposite",
+          "y": 62
+        }
+      }
+    }
   },
   {
     "id": "S5",
@@ -239,15 +324,23 @@
     ],
     "steps": [
       {
-        "who": null,
-        "text": "«ВЫХОД — 3 ЭТАЖА ↑»",
-        "sign": true
+        "who": "sign",
+        "text": "«ВЫХОД — 3 ЭТАЖА ↑»"
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Три этажа! Слышишь? Всего три."
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "sign": {
+          "kind": "sign",
+          "side": "opposite",
+          "y": 60
+        }
+      }
+    }
   },
   {
     "id": "S5-echo",
@@ -271,15 +364,23 @@
     "soon": true,
     "steps": [
       {
-        "who": null,
-        "text": "«ВЫХОД — 3 ЭТАЖА ↑»",
-        "sign": true
+        "who": "sign",
+        "text": "«ВЫХОД — 3 ЭТАЖА ↑»"
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "…Либо табличка врёт, либо мы стоим на месте. Даже не знаю, что хуже."
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "sign": {
+          "kind": "sign",
+          "side": "opposite",
+          "y": 60
+        }
+      }
+    }
   },
   {
     "id": "S6",
@@ -298,20 +399,28 @@
     ],
     "steps": [
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Эй!"
       },
       {
-        "who": "ЭХО",
+        "who": "echo",
         "text": "…эй… ты?..",
         "small": true,
         "delayMs": 2000
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Это моё эхо. Оно отстаёт. И спрашивает то, чего я не спрашивал."
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "echo": {
+          "kind": "voice",
+          "from": "bottom"
+        }
+      }
+    }
   },
   {
     "id": "S7",
@@ -326,17 +435,27 @@
       1,
       2
     ],
-    "creature": "snail",
     "steps": [
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Она не торопится. И всё равно впереди."
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Хотя ей, наверное, не надо выбираться. Она уже дома. Дом на ней."
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "snail": {
+          "kind": "creature",
+          "creature": "snail",
+          "side": "opposite",
+          "y": 74,
+          "path": "crawl"
+        }
+      }
+    }
   },
   {
     "id": "S8",
@@ -355,22 +474,32 @@
     ],
     "steps": [
       {
-        "who": "ГОЛОС",
+        "who": "voice",
         "text": "Есть кто внизу?"
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Да! Да, есть!"
       },
       {
-        "who": "ГОЛОС",
+        "who": "voice",
         "text": "Хорошо. Мы просто проверяли."
       },
       {
-        "who": "ГЕРОЙ",
-        "text": "…Ну вот. Теперь они знают."
+        "who": "hero",
+        "text": "…Ну вот. Теперь они знают.",
+        "act": "beam-off"
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "voice": {
+          "kind": "voice",
+          "from": "top",
+          "beam": true
+        }
+      }
+    }
   },
   {
     "id": "S9",
@@ -385,17 +514,27 @@
       1,
       2
     ],
-    "creature": "bird",
     "steps": [
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Ей можно. Её никто не спрашивал, хочет ли она крылья."
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Интересно, а ей когда-нибудь хочется ходить?"
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "bird": {
+          "kind": "creature",
+          "creature": "bird",
+          "side": "opposite",
+          "y": 30,
+          "path": "dive"
+        }
+      }
+    }
   },
   {
     "id": "S10",
@@ -415,29 +554,39 @@
             "label": "взять трубку",
             "steps": [
               {
-                "who": "ГЕРОЙ",
+                "who": "hero",
                 "text": "Алло?"
               },
               {
-                "who": "В ТРУБКЕ",
+                "who": "phone",
                 "text": "…Извините, я, кажется, ошибся."
               },
               {
-                "who": "ГЕРОЙ",
+                "who": "hero",
                 "text": "Номером?"
               },
               {
-                "who": "В ТРУБКЕ",
+                "who": "phone",
                 "text": "Ямой."
               }
-            ]
+            ],
+            "act": "answer"
           }
         ]
       }
     ],
-    "image": {
-      "src": "assets/collage/phone.webp",
-      "alt": "старый дисковый телефон в стене"
+    "stage": {
+      "actors": {
+        "phone": {
+          "kind": "cutout",
+          "src": "assets/collage/phone.webp",
+          "alt": "старый дисковый телефон в стене",
+          "side": "opposite",
+          "y": 64,
+          "w": 10,
+          "ring": true
+        }
+      }
     }
   },
   {
@@ -456,15 +605,23 @@
     "after": "f4",
     "steps": [
       {
-        "who": "КОСТЯ",
+        "who": "kostya",
         "text": "А что такое «интернет»?",
         "small": true
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Долго объяснять, Костя! … Это как телефон. Только ждут все сразу."
       }
-    ]
+    ],
+    "stage": {
+      "actors": {
+        "kostya": {
+          "kind": "voice",
+          "from": "bottom"
+        }
+      }
+    }
   },
   {
     "id": "S12",
@@ -481,17 +638,26 @@
     ],
     "steps": [
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Второй носок! Значит, наверху кто-то переодевается. Значит, наверху есть жизнь."
       },
       {
-        "who": "ГЕРОЙ",
+        "who": "hero",
         "text": "Или кто-то тоже лез и потерял. … Давай первое."
       }
     ],
-    "image": {
-      "src": "assets/collage/sock.webp",
-      "alt": "носок на выступе"
+    "stage": {
+      "actors": {
+        "sock": {
+          "kind": "cutout",
+          "src": "assets/collage/sock.webp",
+          "alt": "носок на выступе",
+          "side": "opposite",
+          "y": 72,
+          "w": 8,
+          "ledge": true
+        }
+      }
     }
   }
 ]

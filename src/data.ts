@@ -46,9 +46,38 @@ export interface Place {
   lines: { lap1: Record<string, unknown>; lap2?: Record<string, unknown> };
 }
 
+/** Действие актёра перед репликой: slip — сорвался, wave — машет и отстаёт, ledge — перебрался на выступ,
+ * out — вылез из банки, beam-off — фонарь погас, answer — трубку сняли. */
+export type SceneAct = 'slip' | 'wave' | 'ledge' | 'out' | 'beam-off' | 'answer';
+
 export type SceneStep =
-  | { who?: string | null; text: string; small?: boolean; sign?: boolean; delayMs?: number }
-  | { choice: { label: string; effect?: string; steps: SceneStep[] }[]; otherwise?: SceneStep[] };
+  | { who: string; text: string; small?: boolean; pale?: boolean; delayMs?: number; act?: SceneAct }
+  | { choice: { label: string; effect?: string; act?: SceneAct; steps: SceneStep[] }[]; otherwise?: SceneStep[] };
+
+/** Кто появляется в сцене. Человечки — экземпляры героя, голоса — точка у края, вещи — вырезки. */
+export interface SceneActor {
+  kind: 'stick' | 'creature' | 'cutout' | 'sign' | 'note' | 'voice';
+  /** stick: поза; creature: snail | bird */
+  pose?: string;
+  creature?: string;
+  src?: string;
+  alt?: string;
+  /** где: напротив героя или у его стороны; y — в процентах игровой области */
+  side?: 'opposite' | 'same';
+  y?: number;
+  w?: number;
+  anchor?: 'feet' | 'hands';
+  /** voice: откуда звучит */
+  from?: 'top' | 'bottom';
+  enter?: 'climb-in' | 'appear';
+  rope?: boolean;
+  ledge?: boolean;
+  tiny?: boolean;
+  hidden?: boolean;
+  ring?: boolean;
+  beam?: boolean;
+  path?: 'crawl' | 'dive';
+}
 
 export interface Scene {
   id: string;
@@ -62,9 +91,8 @@ export interface Scene {
   soon?: boolean;
   /** только после этого места */
   after?: string;
-  creature?: string;
-  /** коллажная вырезка в карточке сцены */
-  image?: { src: string; alt: string };
+  /** постановка: актёры по id; в шагах who — id актёра или hero */
+  stage: { actors: Record<string, SceneActor> };
   steps: SceneStep[];
 }
 

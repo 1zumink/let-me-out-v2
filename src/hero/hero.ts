@@ -21,7 +21,12 @@ export type HeroState =
   | 'mantle'
   | 'fall'
   | 'chimney'
-  | 'palm';
+  | 'palm'
+  // другой человечек из сайд-сцен (попутчик, человечек на стене, крошечный из банки)
+  | 'stranger-climb'
+  | 'stranger-hang'
+  | 'stranger-slip'
+  | 'stranger-wave';
 export interface StripSpec {
   frames: number;
   fps: number;
@@ -48,6 +53,10 @@ const FALLBACK: Partial<Record<HeroState, HeroState>> = {
   fall: 'slip',
   chimney: 'climb',
   palm: 'hang',
+  'stranger-climb': 'climb',
+  'stranger-hang': 'hang',
+  'stranger-slip': 'slip',
+  'stranger-wave': 'held',
 };
 
 // какие ленты реально загрузились; общий кеш на всех героев (герой и его призрак)
