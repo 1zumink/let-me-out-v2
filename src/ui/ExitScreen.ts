@@ -29,6 +29,9 @@ export function ExitScreen(
     );
   };
 
+  // веб-ринг пока убран: появится сам, когда в webring.json будут настоящие работы, а не TODO
+  const ringReady = !/TODO/.test(`${webring.prev.title} ${webring.next.title}`);
+
   const el = h(
     'section.exit',
     { 'aria-labelledby': 'exit-title', hidden: true },
@@ -37,7 +40,7 @@ export function ExitScreen(
       {},
       title,
       h('div.exit__actions', {}, close, again),
-      h('nav.webring', { 'aria-label': ui.webring }, link('prev'), link('next')),
+      ringReady ? h('nav.webring', { 'aria-label': ui.webring }, link('prev'), link('next')) : null,
       Credits(ui),
       h('footer.exit__footer', {}, restart),
     ),
