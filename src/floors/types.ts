@@ -63,6 +63,8 @@ export interface Ground {
   ceiling?: boolean;
   /** Отсюда выходят не по стене места, а через щель (горло): её края, как стены. */
   exit?: [number, number];
+  /** Узкий дымоход: отсюда вверх — распором, по центру. */
+  chimney?: boolean;
 }
 
 export interface Floor {
@@ -70,6 +72,8 @@ export interface Floor {
   entry(): Pose;
   /** Стены и уступы места. */
   ground(): Ground;
+  /** Герой придёт по этой стене: место может встать под неё (проход переставляет вещи на другую сторону). До entry(). */
+  approach?(side: Side): void;
   /** Строит место в слоте; камера ещё едет. */
   mount(ctx: FloorCtx): void;
   /** Камера приехала: расставить героя и свет. */

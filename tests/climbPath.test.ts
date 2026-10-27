@@ -46,7 +46,7 @@ describe('путь подъёма', () => {
   });
 
   it('уступ у самой стены — вылезает через край, а не прыгает', () => {
-    const room: Footing = { walls: [6, 6], ledge: { x0: 4, x1: 96, y: 84 }, x: 24, y: 84, state: 'idle' };
+    const room: Footing = { walls: [14, 14], ledge: { x0: 12, x1: 88, y: 84 }, x: 24, y: 84, state: 'idle' };
     expect(climbPath(a, room, box).segments.map((s) => s.kind)).toEqual(['walk', 'jump', 'wall', 'mantle', 'walk']);
   });
 
@@ -90,5 +90,53 @@ describe('путь подъёма', () => {
     expect(t(toWall, 0.1)).toBeGreaterThan(t(toWall, 0.9));
     expect(t(toWall, 0.01)).toBeCloseTo(1, 1);
     expect(t(toLedge, 0.1)).toBeLessThan(t(toLedge, 0.9));
+  });
+
+  it('стык: свои стены шире — вылез на их верх и дошёл до новой стены', () => {
+    const wide: Footing = { walls: [6, 6], ledge: { x0: 22, x1: 78, y: 70 }, x: 50, y: 70, state: 'idle' };
+    const kinds = climbPath(a, wide, box).segments.map((s) => s.kind);
+    expect(kinds.slice(2, 5)).toEqual(['wall', 'mantle', 'walk']);
+  });
+
+  it('стык: новые стены шире — под нависанием на руках', () => {
+    const narrow: Footing = { walls: [30, 30], ledge: { x0: 40, x1: 60, y: 70 }, x: 50, y: 70, state: 'idle' };
+    const kinds = climbPath(a, narrow, box).segments.map((s) => s.kind);
+    expect(kinds).toContain('traverse');
+  });
+
+  it('вылезание сначала вертикально', () => {
+    const wide: Footing = { walls: [6, 6], ledge: { x0: 22, x1: 78, y: 70 }, x: 50, y: 70, state: 'idle' };
+    const path = climbPath(a, wide, box);
+    const m = path.segments.find((s) => s.kind === 'mantle')!;
+    const p = (u: number) => path.at(m.p0 + (m.p1 - m.p0) * u);
+    expect(p(0.5).x).toBeCloseTo(p(0).x, 5);
+    expect(p(0.5).y).toBeLessThan(p(0).y);
+  });
+
+  it('из дымохода — распором вверх и через край', () => {
+    const chimney: Footing = { walls: [44, 44], ledge: undefined, x: 50, y: 46, state: 'breathe', chimney: true };
+    const kinds = climbPath(chimney, b, box).segments.map((s) => s.kind);
+    expect(kinds[0]).toBe('chimney');
+    expect(kinds).toContain('mantle');
+    // распор только внутри дымохода: после вылезания — обычная стена
+    expect(kinds.slice(kinds.indexOf('mantle')).includes('chimney')).toBe(false);
+  });
+
+  it('с уступа идёт к стене, которую ждёт следующее место', () => {
+    expect(climbPath({ ...a, x: 30 }, { ...b, side: 'right' }, box).side).toBe('right');
+    // висит на стене — держится своей
+    const hang: Footing = { walls: [14, 14], x: 20, y: 46, state: 'hang', side: 'left' };
+    expect(climbPath(hang, { ...b, side: 'right' }, box).side).toBe('left');
+  });
+
+  it('без скачков на любом стыке', () => {
+    const cases: Footing[] = [
+      { walls: [6, 6], ledge: { x0: 22, x1: 78, y: 70 }, x: 50, y: 70, state: 'idle' },
+      { walls: [30, 30], ledge: { x0: 40, x1: 60, y: 70 }, x: 50, y: 70, state: 'idle' },
+    ];
+    for (const to of cases) {
+      const poses = sample(climbPath(a, to, box), 2000);
+      for (let i = 1; i < poses.length; i++) expect(Math.hypot(poses[i].x - poses[i - 1].x, poses[i].y - poses[i - 1].y)).toBeLessThan(1.5);
+    }
   });
 });

@@ -17,6 +17,8 @@ export interface GameFloorOptions {
   restAt?: [number, number];
   restState?: HeroState;
   world?: SilhouetteOptions;
+  /** Мир, который зависит от экрана (дымоход — по ширине героя); считается при монтировании вместо world. */
+  worldFor?: (ctx: FloorCtx) => SilhouetteOptions;
   /** Место выше экрана: зал на столько экранов (world в единицах зала, 100 на экран). Камера — --cam слота, 0 низ … 1 верх. */
   hall?: number;
   /** Своё к стенам и уступам силуэта: выступы этажа, сторона, горло. */
@@ -36,7 +38,7 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
   let game: Game | null = null;
   const [x, y] = opts.heroAt ?? [50, 78];
 
-  const world = opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] };
+  let world = opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] };
 
   const entry = (): Pose => ({ x, y, anchor: opts.heroAnchor, state: opts.heroState ?? 'idle' });
 
@@ -46,6 +48,7 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
     ground: () => groundOf(opts.hall ? { wall: world.wall } : world, opts.ground?.(ctx)),
     mount(c) {
       ctx = c;
+      if (opts.worldFor) world = opts.worldFor(c);
       const walls = silhouette(c.rng, opts.hall ? { ...world, height: opts.hall * 100 } : world);
       if (opts.hall) {
         const hall = h('div.hall');

@@ -5,7 +5,7 @@ import { focus, motion } from '../a11y';
 import { createScrub, type Scrub } from '../scrub';
 import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
 import { texturedWalls } from '../scene/textures';
-import { wallX } from '../climbPath';
+import { wallX, type Side } from '../climbPath';
 import { groundOf } from './gameFloor';
 import type { Floor, FloorCtx, Ground, Pose } from './types';
 
@@ -19,13 +19,20 @@ export function passage(opts: { world?: SilhouetteOptions; decorate?: (ctx: Floo
   let scrub: Scrub | null = null;
   const world = opts.world ?? { wall: 14 };
   // лезет по стене напротив вещей, чтобы не закрывать их
-  const ground = (): Ground => groundOf(world, { side: (ctx?.data.collage?.[0]?.x ?? 72) < 50 ? 'right' : 'left' });
+  // лезет по стене напротив вещей; придёт по другой — вещи переезжают на противоположную сторону (approach)
+  let side: Side | null = null;
+  const ground = (): Ground => groundOf(world, { side: side ?? ((ctx?.data.collage?.[0]?.x ?? 72) < 50 ? 'right' : 'left') });
   const entry = (): Pose => ({ x: wallX(ground().walls, ground().side!, ctx.hero.box()), y: Y, anchor: 'hands', state: 'wall' });
   const hold = () => ctx.hero.scrub('wall', 0);
 
   return {
     entry,
     ground,
+    approach(from) {
+      if (from === ground().side) return;
+      side = from;
+      for (const it of items) it.style.left = `${100 - parseFloat(it.style.left)}%`;
+    },
     mount(c) {
       ctx = c;
       const walls = silhouette(c.rng, world);

@@ -22,7 +22,7 @@ import { Atmosphere, FilterDefs, Grain } from './scene/Atmosphere';
 import { startBoilClock } from './scene/boil';
 import { createSideScenes } from './scenes/sideScenes';
 import { createScrub } from './scrub';
-import { climbPath, type ClimbPath, type Footing } from './climbPath';
+import { climbPath, pickSide, type ClimbPath, type Footing } from './climbPath';
 import { pickMoment } from './lines';
 import type { Floor, FloorCtx, Hint } from './floors/types';
 
@@ -240,7 +240,7 @@ let restState = hero.state;
 function footing(c: Current, x: number, y: number, state: Footing['state'], leaving: boolean): Footing {
   const g = c.floor.ground();
   const ledge = g.ledges.find((l) => x >= l.x0 - 1 && x <= l.x1 + 1 && Math.abs(l.y - y) < 2.5);
-  return { walls: (leaving && g.exit) || g.walls, ledge, x, y, state, side: g.side, ceiling: g.ceiling };
+  return { walls: (leaving && g.exit) || g.walls, ledge, x, y, state, side: g.side, ceiling: g.ceiling, chimney: leaving && g.chimney };
 }
 
 const climb = createScrub({
@@ -287,8 +287,14 @@ function beginClimb(): boolean {
   hero.el.classList.add('is-tracking');
   restState = hero.state;
   const [hx, hy] = hero.position;
+  const from = footing(current, hx, hy, hero.state, true);
+  // место, которому всё равно, по какой стене приходят (проход), встаёт под ту, к которой герой пошёл бы сам
+  if (pending.floor.approach) {
+    const e0 = pending.floor.entry();
+    pending.floor.approach(pickSide(from, { ...footing(pending, e0.x, hero.toFeet(e0.y, e0.anchor), e0.state, false), side: undefined }));
+  }
   const e = pending.floor.entry();
-  path = climbPath(footing(current, hx, hy, hero.state, true), footing(pending, e.x, hero.toFeet(e.y, e.anchor), e.state, false), hero.box());
+  path = climbPath(from, footing(pending, e.x, hero.toFeet(e.y, e.anchor), e.state, false), hero.box());
   return true;
 }
 

@@ -173,7 +173,7 @@ export class Hero {
     this.el.style.opacity = '';
     this.el.style.transform = '';
     this.el.hidden = false;
-    this.el.classList.remove('is-tracking', 'is-blink', 'is-floating', 'is-dragging');
+    this.el.classList.remove('is-tracking', 'is-blink', 'is-floating', 'is-dragging', 'is-sway');
   }
 
   /** Скорость покадровой анимации (крылья бьют сильнее или слабее). */

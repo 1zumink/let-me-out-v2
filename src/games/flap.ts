@@ -130,9 +130,11 @@ export const createFlap: GameFactory = (ctx, onDone) => {
     follow(0, true);
     hero.place(f.x, y());
     ctx.light(50, FLAP.yTop - 16);
-    await hero.go(50, FLAP.yTop, { state: 'fly', ms: 700, stride: 4, signal: s.signal });
+    // повисает руками на кромке горла и покачивается, пока решает, что делать с крыльями
+    await hero.go(50, hero.toFeet(FLAP.yTop - 5, 'hands'), { state: 'fly', ms: 700, stride: 4, signal: s.signal });
     if (s.signal.aborted) return;
-    hero.set('idle');
+    hero.set('hang');
+    hero.el.classList.add('is-sway');
     if (!landedOnce) {
       landedOnce = true;
       await say('firstLedge');
@@ -155,6 +157,7 @@ export const createFlap: GameFactory = (ctx, onDone) => {
     await say(how === 'folded' ? 'fold' : 'takeOff');
     if (s.signal.aborted) return;
     // крылья больше не мешают — герой протискивается в горло, упираясь в его стенки
+    hero.el.classList.remove('is-sway');
     await hero.go(50, FLAP.yTop - 12, { state: 'chimney', ms: 1100, stride: 5, signal: s.signal });
     if (!s.signal.aborted) onDone();
   };
@@ -183,7 +186,7 @@ export const createFlap: GameFactory = (ctx, onDone) => {
       cancelAnimationFrame(raf);
       hint.stop();
       animate(1);
-      hero.el.classList.remove('is-tracking');
+      hero.el.classList.remove('is-tracking', 'is-sway');
       hero.el.style.rotate = '';
       s.dispose();
     },

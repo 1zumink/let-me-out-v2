@@ -417,7 +417,7 @@
   position: absolute;
   left: 50%;
   top: 46%;
-  width: min(46vmin, 360px);
+  width: min(78vmin, 640px);
   aspect-ratio: 5 / 6;
   translate: -50% -50%;
   z-index: 3;
@@ -461,7 +461,8 @@
   position: absolute;
   inset: -12%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(232 228 220 / 0.18), rgb(232 228 220 / 0.06) 60%, transparent);
+  /* дыхание на стекле: за ладонью он сам виден мягче */
+  background: radial-gradient(closest-side, rgb(150 146 138 / 0.55), rgb(150 146 138 / 0.25) 60%, transparent);
   filter: blur(6px);
 }
 .is-reduced .palm {
@@ -586,5 +587,23 @@
   }
 }
 .is-reduced .floor.is-throat-open .hall::after {
+  animation: none;
+}
+
+/* крылья: висит на кромке горла и покачивается — точка вращения у рук */
+.hero.is-sway {
+  transform-origin: 50% 8%;
+  animation: hang-sway 2.4s ease-in-out infinite alternate;
+}
+@keyframes hang-sway {
+  from {
+    rotate: -3deg;
+  }
+  to {
+    rotate: 3deg;
+  }
+}
+.is-reduced .hero.is-sway,
+.is-paused .hero.is-sway {
   animation: none;
 }

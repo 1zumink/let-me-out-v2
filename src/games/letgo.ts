@@ -8,7 +8,7 @@ import type { Line } from '../data';
 import { scope, type GameFactory } from './common';
 
 const LONG_MS = 20000;
-const ZOOM = 2.2;
+const ZOOM = 3.6; // камера вплотную: герой почти по плечи, рука у стекла
 const BASE = import.meta.env.BASE_URL;
 
 const textOf = (l: Line) => (typeof l === 'string' ? l : l.text);
@@ -44,6 +44,7 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
 
   /** Камера подъезжает к герою: мир, герой и свет увеличиваются вокруг его груди у стекла. */
   let zoomed: Animation[] = [];
+  let shift = '0px 0px';
   const closeup = (on: boolean) => {
     const st = stage();
     if (!st) return;
@@ -51,13 +52,19 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
     if (on) {
       const r = hero.el.getBoundingClientRect();
       const box = layers[1].getBoundingClientRect();
-      const origin = `${((r.left + r.width / 2 - box.left) / box.width) * 100}% ${((r.top + r.height * 0.3 - box.top) / box.height) * 100}%`;
-      for (const el of layers) el.style.transformOrigin = origin;
+      // наезд — на руку, которую он прижмёт к стеклу (в ленте palm она справа от головы), и рука уходит в центр кадра,
+      // туда же, где вырастет ладонь (.palm: 50 % / 46 %)
+      const hx = r.left + r.width * 0.62 - box.left;
+      const hy = r.top + r.height * 0.42 - box.top;
+      const st0 = st.getBoundingClientRect();
+      shift = `${(st0.left + st0.width * 0.5 - box.left - hx).toFixed(0)}px ${(st0.top + st0.height * 0.46 - box.top - hy).toFixed(0)}px`;
+      for (const el of layers) el.style.transformOrigin = `${(hx / box.width) * 100}% ${(hy / box.height) * 100}%`;
     } else if (!zoomed.length) return;
     const ms = motion.reduced() ? 0 : on ? 2500 : 900;
-    const [from, to] = on ? ['1', String(ZOOM)] : [String(ZOOM), '1'];
+    const near = { scale: String(ZOOM), translate: shift };
+    const far = { scale: '1', translate: '0px 0px' };
     zoomed.forEach((a) => a.cancel());
-    zoomed = layers.map((el) => el.animate([{ scale: from }, { scale: to }], { duration: ms, easing: 'cubic-bezier(.45,0,.25,1)', fill: 'forwards' }));
+    zoomed = layers.map((el) => el.animate(on ? [far, near] : [near, far], { duration: ms, easing: 'cubic-bezier(.45,0,.25,1)', fill: 'forwards' }));
     if (!on) {
       const done = zoomed;
       Promise.all(done.map((a) => a.finished)).then(
@@ -68,13 +75,24 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
     }
   };
 
-  /** Ладонь ложится на стекло, два-три тихих толчка — без звука, экран чуть вздрагивает. */
+  /** Где на экране его рука у стекла и какого она размера, относительно ладони во весь размер. */
+  const fromHand = () => {
+    const r = hero.el.getBoundingClientRect();
+    const p = palm.getBoundingClientRect();
+    const dx = r.left + r.width * 0.62 - (p.left + p.width / 2);
+    const dy = r.top + r.height * 0.42 - (p.top + p.height / 2);
+    const k = Math.max(0.05, (r.width * 0.16) / (p.width || 1));
+    return `translate(${dx.toFixed(0)}px, ${dy.toFixed(0)}px) scale(${k.toFixed(3)})`;
+  };
+
+  /** Рука героя тянется к стеклу — и вырастает в ладонь на нашем экране; два-три тихих толчка, экран чуть вздрагивает. */
   const touch = async () => {
     hero.set('palm');
     stage()?.append(palm);
     await ctx.wait(motion.reduced() ? 0 : 500);
     palm.classList.add('is-on');
     if (motion.reduced()) return;
+    palm.animate([{ transform: fromHand(), opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900, easing: 'cubic-bezier(.3,0,.2,1)' });
     for (let i = 0; i < 3; i++) {
       await ctx.wait(i ? 520 : 900);
       if (s.signal.aborted) return;
@@ -122,7 +140,8 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
     s.clear(longTimer);
     target.remove();
     button.remove();
-    // ладонь соскальзывает со стекла, камера отъезжает
+    // ладонь уходит обратно в его руку и соскальзывает со стекла, камера отъезжает
+    if (!motion.reduced() && palm.isConnected) palm.animate([{ transform: 'none' }, { transform: fromHand() }], { duration: 500, easing: 'ease-in', fill: 'forwards' });
     palm.classList.remove('is-on');
     palm.classList.add('is-off');
     closeup(false);

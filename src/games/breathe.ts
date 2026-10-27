@@ -66,7 +66,7 @@ export const createBreathe: GameFactory = (ctx, onDone) => {
 
     if (c.slipping) pose('fall');
     // лезет в распор — кадры идут за подъёмом: встал — встали и ноги
-    else if (moving(c)) hero.scrub('chimney', (c.p * 12) % 1);
+    else if (moving(c)) hero.scrub('chimney', (c.p * 30) % 1);
     else if (dim(c)) pose('idle');
     else pose('breathe');
 

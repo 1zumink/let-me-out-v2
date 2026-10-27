@@ -70,12 +70,20 @@ const holdFloor = (smooth: boolean) => () =>
 export const floor1 = holdFloor(false);
 export const floor7 = holdFloor(true);
 
-// 2. Дыхание: узкий каменный дымоход, края экрана темнее
+// 2. Дыхание: узкий каменный дымоход — стены по герою, плечи и ноги упираются в камень; края экрана темнее
 export const floor2 = (): Floor => {
-  const base = gameFloor({ heroAt: [50, 82], world: { wall: 32, ledges: [{ x0: 30, x1: 70, y: 82, depth: 18 }] }, light: [50, 66, 24] });
+  const base = gameFloor({
+    heroAt: [50, 82],
+    light: [50, 66, 24],
+    worldFor: (ctx) => {
+      // стена = середина минус чуть больше половины героя: распор, а не вис в воздухе
+      const wall = Math.max(20, 50 - ctx.hero.box().w * 0.3);
+      return { wall, ledges: [{ x0: wall - 2, x1: 102 - wall, y: 82, depth: 18 }] };
+    },
+    ground: () => ({ chimney: true }),
+  });
   return { ...base, arrive: () => (base.arrive?.(), document.querySelector('.stage')?.classList.add('is-narrow')), unmount: () => (document.querySelector('.stage')?.classList.remove('is-narrow'), base.unmount()) };
 };
-
 
 // 3. Деревянная комната — домик на уступе: снаружи фасад с дверью посередине. Герой подходит к двери, она открывается,
 // фасад гаснет и проявляется комната в разрезе; герой проходит к своему месту. Второй круг — комната такая, какой её оставили, без игры
