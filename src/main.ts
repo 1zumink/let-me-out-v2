@@ -83,6 +83,9 @@ startBoilClock();
 // игровая область кончается над доком с кнопками, чтобы они не закрывали героя
 const dock = stage.querySelector<HTMLElement>('.dock')!;
 new ResizeObserver(() => stage.style.setProperty('--dock-space', `${dock.offsetHeight}px`)).observe(dock);
+// и начинается под шапкой там, где ей не хватает места сверху (телефон лёжа)
+const hudEl = stage.querySelector<HTMLElement>('.hud')!;
+new ResizeObserver(() => stage.style.setProperty('--hud-space', `${hudEl.offsetHeight}px`)).observe(hudEl);
 
 const hero = new Hero(heroSpec, import.meta.env.BASE_URL);
 heroLayer.append(hero.el);

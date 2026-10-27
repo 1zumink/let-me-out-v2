@@ -17,20 +17,22 @@ export function ExitScreen(
   again.addEventListener('click', onAgain);
   restart.addEventListener('click', onRestart);
 
-  const link = (dir: 'prev' | 'next') => {
-    const w = webring[dir];
-    const label = dir === 'prev' ? `← ${ui.webringPrev}` : `${ui.webringNext} →`;
-    return h(
-      'a.webring__link',
-      { href: w.url, rel: dir },
-      h('span.webring__dir', {}, label),
-      h('span.webring__title', {}, w.title),
-      w.about ? h('span.webring__about', {}, w.about) : null,
-    );
-  };
-
-  // веб-ринг пока убран: появится сам, когда в webring.json будут настоящие работы, а не TODO
-  const ringReady = !/TODO/.test(`${webring.prev.title} ${webring.next.title}`);
+  // курсовой веб-ринг: разметка и классы — по общему шаблону курса (course-webring)
+  const link = (w: { title: string; url: string | null }, text: string) =>
+    w.url ? h('a', { href: w.url, target: '_top' }, text) : h('span.course-webring__soon', {}, text);
+  const ring = h(
+    'footer.course-webring',
+    {},
+    h('h2', {}, ui.webring),
+    h(
+      'nav.course-webring__nav',
+      { 'aria-label': 'Веб-ринг проектов' },
+      link(webring.prev, `← ${webring.prev.title}`),
+      link(webring.all, webring.all.title),
+      link(webring.next, `${webring.next.title} →`),
+    ),
+    h('nav.course-webring__nav.course-webring__nav--start', { 'aria-label': 'Маршрут по проектам' }, link(webring.start, `${webring.start.title} →`)),
+  );
 
   const el = h(
     'section.exit',
@@ -40,9 +42,9 @@ export function ExitScreen(
       {},
       title,
       h('div.exit__actions', {}, close, again),
-      ringReady ? h('nav.webring', { 'aria-label': ui.webring }, link('prev'), link('next')) : null,
       Credits(ui),
-      h('footer.exit__footer', {}, restart),
+      h('div.exit__footer', {}, restart),
+      ring,
     ),
   );
 

@@ -137,7 +137,11 @@ async function main() {
   // в where сцен — id этажей и уступа или тег passage (случайный проход)
   errors.push(...validateScenes(scenes, new Set([...places.map((p) => p.id), 'passage'])));
   if (!Array.isArray(credits)) errors.push('credits.json: должен быть массив');
-  for (const k of ['prev', 'next']) if (!isStr(webring?.[k]?.title) || !isStr(webring?.[k]?.url)) errors.push(`webring.json: нужен ${k}.title и ${k}.url`);
+  for (const k of ['all', 'start', 'prev', 'next']) {
+    if (!isStr(webring?.[k]?.title)) errors.push(`webring.json: нужен ${k}.title`);
+    // ссылки может ещё не быть (null) — тогда название без перехода
+    if (webring?.[k]?.url !== null && !isStr(webring?.[k]?.url)) errors.push(`webring.json: ${k}.url — ссылка или null`);
+  }
   for (const [k, v] of Object.entries(hero)) {
     if (!(v.frames >= 1 && v.fps > 0 && typeof v.loop === 'boolean')) errors.push(`hero.json: ${k} — нужны frames, fps, loop`);
     if (v.align !== undefined && v.align !== 'feet' && v.align !== 'top') errors.push(`hero.json: ${k}.align — feet или top`);

@@ -246,6 +246,15 @@
   transform: scaleY(0.36);
   transform-origin: 50% 100%;
 }
+/* сплющенная вещь (ковёр) на низком экране ниже 44 px — зона нажатия чуть больше картинки */
+.room-item--flat .room-item__btn {
+  position: relative;
+}
+.room-item--flat .room-item__btn::after {
+  content: '';
+  position: absolute;
+  inset: -12px 0;
+}
 /* чашка и лампа стоят на столешнице: стол снят сверху-сбоку, его поверхность — верхние ~30% фото,
    низ вещи ставим на её дальнюю треть */
 .room-item--on-table {

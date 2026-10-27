@@ -57,15 +57,23 @@ export function buildRoom(ctx: FloorCtx, removed: string[], interactive: boolean
   const base = import.meta.env.BASE_URL;
   const params = ctx.data.params as { table: CollageItem; wings: CollageItem; backdrop?: CollageItem };
   const room = h('div.room');
-  // на узком экране вещи разложены иначе, чтобы зоны нажатия 44 px не перекрывались
-  const narrow = window.matchMedia('(max-width: 560px) and (orientation: portrait)').matches;
-  const place = (el: HTMLElement, it: Pick<CollageItem, 'x' | 'y' | 'w' | 'rot' | 'xs'>) => {
-    const at = narrow && it.xs ? it.xs : it;
+  // на узком экране вещи разложены иначе, чтобы зоны нажатия 44 px не перекрывались;
+  // телефон повернули — вещи перекладываются по новой раскладке
+  const narrowMq = window.matchMedia('(max-width: 560px) and (orientation: portrait)');
+  const placed: [HTMLElement, Pick<CollageItem, 'x' | 'y' | 'w' | 'xs' | 'on'>][] = [];
+  const put = (el: HTMLElement, it: Pick<CollageItem, 'x' | 'y' | 'w' | 'xs' | 'on'>) => {
+    const at = narrowMq.matches && it.xs ? it.xs : it;
     el.style.left = `${at.x}%`;
-    el.style.top = `${at.y}%`;
+    // на столе: x — в процентах ширины стола, низ вещи — на столешнице
+    if (it.on !== 'table') el.style.top = `${at.y}%`;
     el.style.setProperty('--w', String(at.w));
+  };
+  const place = (el: HTMLElement, it: Pick<CollageItem, 'x' | 'y' | 'w' | 'rot' | 'xs' | 'on'>) => {
+    placed.push([el, it]);
+    put(el, it);
     el.style.setProperty('--rot', `${it.rot ?? between(ctx.rng, -3, 3).toFixed(1)}deg`);
   };
+  narrowMq.addEventListener('change', () => placed.forEach(([el, it]) => put(el, it)), { signal: ctx.signal });
   const img = (src: string) =>
     h('img.room-item__img', { src: base + src, alt: '', draggable: 'false', loading: 'lazy', decoding: 'async' });
 
@@ -102,14 +110,8 @@ export function buildRoom(ctx: FloorCtx, removed: string[], interactive: boolean
     wrap.classList.toggle('room-item--flat', !!item.flat);
     // обёртка держит пропорции картинки, чтобы пятно осталось, когда кнопка исчезнет
     picture.addEventListener('load', () => (wrap.style.aspectRatio = `${picture.naturalWidth} / ${picture.naturalHeight}`), { once: true });
-    if (item.on === 'table') {
-      // на столе: x — в процентах ширины стола, низ вещи — на столешнице
-      const at = narrow && item.xs ? item.xs : item;
-      wrap.classList.add('room-item--on-table');
-      wrap.style.left = `${at.x}%`;
-      wrap.style.setProperty('--w', String(at.w));
-      wrap.style.setProperty('--rot', `${item.rot ?? between(ctx.rng, -3, 3).toFixed(1)}deg`);
-    } else place(wrap, item);
+    wrap.classList.toggle('room-item--on-table', item.on === 'table');
+    place(wrap, item);
     if (removed.includes(item.id)) {
       btn.hidden = true;
       spot.hidden = false;

@@ -230,7 +230,7 @@ html[data-boil='2']:not(.is-reduced):not(.is-paused) .boil {
 /* на узком экране надпись по центру заходит под кнопки шапки — вешаем её за верхний край, ниже кнопок */
 @media (max-width: 600px) {
   .wall-quote {
-    top: max(calc(var(--y, 34) * 1% - 4em), 100px);
+    top: max(calc(var(--y, 34) * 1% - 4em), calc(var(--hud-space, 88px) + 12px));
     translate: -50% 0;
   }
 }
@@ -304,4 +304,14 @@ s.wall-quote__word {
   mask-size: 100% 100%;
   -webkit-mask-size: 100% 100%;
   pointer-events: none;
+}
+
+/* узкий и невысокий экран: надпись помельче, чтобы не занимала полстены над героем */
+@media (max-width: 400px) and (max-height: 700px) {
+  .wall-quote {
+    font-size: 19px;
+  }
+  .wall-quote--long {
+    font-size: 17px;
+  }
 }

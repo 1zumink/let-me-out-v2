@@ -115,10 +115,13 @@ export interface Credit {
 
 export interface WebringLink {
   title: string;
-  about?: string;
-  url: string;
+  /** null — у соседней работы ещё нет ссылки: название показывается без перехода */
+  url: string | null;
 }
+/** Курсовой веб-ринг: предыдущая и следующая работа, все проекты, начало маршрута. */
 export interface Webring {
+  all: WebringLink;
+  start: WebringLink;
   prev: WebringLink;
   next: WebringLink;
 }
