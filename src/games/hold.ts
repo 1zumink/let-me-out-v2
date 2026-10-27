@@ -1,21 +1,22 @@
-// «Держи» (этажи 1 и 7): держишь — герой лезет; отпустишь — съезжает до последней остановки, не ниже.
+// «Держи» (этажи 1 и 7): держишь — герой лезет по левой стене; отпустишь — держится за стену, где был, и ждёт.
 // Удержание: на герое или в любом месте шахты (указатель), Enter/пробел на «держать»; дубль — переключатель.
 import { h } from '../dom';
 import { bindHold } from '../input';
 import { focus, motion } from '../a11y';
 import type { Line } from '../data';
+import type { HeroState } from '../hero/hero';
+import { wallX } from '../climbPath';
 import { scope, type GameFactory } from './common';
 
-const X = 50;
-const SLIDE_PER_MS = 1 / 900; // съезжает быстрее, чем лезет
-const STEP = 0.25; // reduced motion: подъём и сползание ступеньками
+/** Ширина стен шахты «Держи», %: по левой герой и лезет. */
+export const HOLD_WALL = 14;
+const STEP = 0.25; // reduced motion: подъём ступеньками
+const STRIDE = 0.12; // доля участка на один перехват
 
 /** Что делает герой — то и показывает поза. */
 const STATE = {
-  climbing: 'climb', // держат — лезет
+  climbing: 'wall', // держат — лезет по стене, кадр перехвата идёт за подъёмом
   supported: 'held', // остановка: держат, отдыхает — висит на руке читателя, ноги свободно
-  sliding: 'slip', // отпустили — съезжает
-  ledge: 'hang', // съехал до выступа — висит на кромке, ноги свисают
   floor: 'idle', // внизу, на полу
   seated: 'sit', // последний широкий выступ: «посади меня тут ненадолго»
 } as const;
@@ -28,8 +29,10 @@ export const createHold: GameFactory = (ctx, onDone) => {
   const stopLines = ctx.get<Line[][]>('stops') ?? [];
   // остановки: промежуточные — выступы на уровне рук, последняя — широкий, на него встают
   const last = params.stops.length;
-  const feetAt = (k: number) =>
+  const rawFeet = (k: number) =>
     k === 0 ? params.startY ?? 84 : k === last && params.end !== 'hang' ? params.stops[k - 1] : hero.toFeet(params.stops[k - 1], 'hands');
+  // каждая остановка выше прошлой: на низком экране герой крупнее, и висеть на первом выступе ниже пола он не должен
+  const feetAt = (k: number): number => (k === 0 ? rawFeet(0) : Math.min(rawFeet(k), feetAt(k - 1) - 6));
   let section = 0; // между остановкой section и section + 1
   let progress = 0;
   let holding = false;
@@ -37,6 +40,7 @@ export const createHold: GameFactory = (ctx, onDone) => {
   let raf = 0;
   let last_ = 0;
   const hint = ctx.hint();
+  const X = wallX([HOLD_WALL, HOLD_WALL], 'left', hero.box());
 
   const grip = s.own(
     h('div.grip.grip--hand', { role: 'button', tabindex: '0', 'aria-label': ui.holdTarget, 'aria-pressed': 'false' }, h('span.grip__arm', { 'aria-hidden': 'true' })),
@@ -47,8 +51,10 @@ export const createHold: GameFactory = (ctx, onDone) => {
     h('div.meter', { role: 'progressbar', 'aria-label': ui.holdProgress, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' }, fill),
   );
 
-  const pose = (state: (typeof STATE)[keyof typeof STATE]) => hero.state !== state && hero.set(state);
-  const restPose = () => pose(section === 0 ? STATE.floor : STATE.ledge);
+  const pose = (state: HeroState) => hero.state !== state && hero.set(state);
+  // перехват по стене — по пройденному: отпустили — руки и ноги замерли на камне
+  const grip_ = () => hero.scrub(STATE.climbing, ((section + progress) / STRIDE) % 1);
+  const restPose = () => (section === 0 && progress === 0 ? pose(STATE.floor) : grip_());
 
   const y = () => {
     const p = motion.reduced() ? Math.floor(progress / STEP) * STEP : progress;
@@ -63,8 +69,7 @@ export const createHold: GameFactory = (ctx, onDone) => {
     toggle.setAttribute('aria-pressed', String(value));
     grip.classList.toggle('is-held', value);
     if (resting) return;
-    if (value) pose(STATE.climbing);
-    else if (progress > 0) pose(STATE.sliding);
+    if (value) grip_();
     else restPose();
   };
 
@@ -77,23 +82,21 @@ export const createHold: GameFactory = (ctx, onDone) => {
     const total = (section / last) * 100;
     fill.style.transform = `scaleX(${total / 100})`;
     meter.setAttribute('aria-valuenow', String(Math.round(total)));
-    pose(section < last ? STATE.supported : params.end === 'hang' ? STATE.ledge : STATE.seated);
+    pose(section < last ? STATE.supported : params.end === 'hang' ? 'hang' : STATE.seated);
     if (!params.silent) await ctx.say(stopLines[section - 1] ?? []);
     if (s.signal.aborted) return;
     if (section >= last) return finish();
     resting = false;
-    if (holding) pose(STATE.climbing);
-    else restPose();
+    restPose();
   };
 
   const tick = (now: number) => {
     const dt = Math.min(now - last_, 100);
     last_ = now;
     if (!resting) {
-      if (holding) progress = Math.min(1, progress + dt / params.sectionMs);
-      else if (progress > 0) {
-        progress = Math.max(0, progress - dt * SLIDE_PER_MS);
-        if (progress === 0) restPose();
+      if (holding) {
+        progress = Math.min(1, progress + dt / params.sectionMs);
+        grip_();
       }
       hero.place(X, y());
       const total = ((section + progress) / last) * 100;
@@ -111,8 +114,12 @@ export const createHold: GameFactory = (ctx, onDone) => {
   };
 
   return {
-    start() {
+    async start() {
       hint.poke();
+      // от точки входа — шагом к стене, по которой полезет
+      await hero.walkTo(X, 700, s.signal);
+      if (s.signal.aborted) return;
+      hero.flip(true);
       hero.el.classList.add('is-tracking');
       hero.place(X, feetAt(0));
       restPose();

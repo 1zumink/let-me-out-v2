@@ -1,7 +1,6 @@
-// Переход, который тянет прокрутка: p от 0 до 1. Отпустил на трети пути — докатывается, раньше — откатывается.
-// Кнопка и стрелка проигрывают тот же путь сами.
+// Переход, который тянет прокрутка: p от 0 до 1. Отпустил посреди пути — стоит, где был: герой держится.
+// Прыжок, начатый прокруткой, допрыгивается сам. Прокрутка вниз ведёт назад. Кнопка и стрелка проигрывают остаток пути сами.
 
-export const COMMIT_AT = 0.35;
 const PLAY_MS = 1400;
 
 export interface ScrubOptions {
@@ -9,7 +8,14 @@ export interface ScrubOptions {
   distance: () => number;
   onProgress: (p: number) => void;
   onDone: () => void;
+  /** Прокрутили назад до самого начала и отпустили. */
   onCancel?: () => void;
+  /** Отпустил посреди пути: герой держится, где был. */
+  onRest?: (p: number) => void;
+  /** Где можно остановиться, отпустив на p: прыжок не обрывается в воздухе — путь доходит сам. */
+  settle?: (p: number) => number;
+  /** Сколько мс кнопка «выше» играет весь путь; по умолчанию PLAY_MS. */
+  playMs?: () => number;
   /** reduced motion: без движения, сразу в конец. */
   instant?: () => boolean;
 }
@@ -20,6 +26,7 @@ export function createScrub(o: ScrubOptions) {
   let p = 0;
   let raf = 0;
   let animating = false;
+  let moved = false; // прокрутка двигала путь с последнего отпускания
 
   const set = (v: number) => {
     p = Math.min(1, Math.max(0, v));
@@ -33,6 +40,7 @@ export function createScrub(o: ScrubOptions) {
     stop();
     set(1);
     p = 0;
+    moved = false;
     o.onDone();
   };
   const cancel = () => {
@@ -41,9 +49,9 @@ export function createScrub(o: ScrubOptions) {
     o.onCancel?.();
   };
 
-  function animateTo(target: 0 | 1, ms: number) {
+  function animateTo(target: number, ms: number, then: () => void) {
     stop();
-    if (o.instant?.()) return target === 1 ? finish() : cancel();
+    if (o.instant?.()) return target >= 1 ? finish() : (set(target), then());
     const from = p;
     const t0 = performance.now();
     animating = true;
@@ -51,8 +59,11 @@ export function createScrub(o: ScrubOptions) {
       const t = Math.min(1, (now - t0) / Math.max(ms, 1));
       set(from + (target - from) * ease(t));
       if (t < 1) raf = requestAnimationFrame(tick);
-      else if (target === 1) finish();
-      else cancel();
+      else if (target >= 1) finish();
+      else {
+        stop();
+        then();
+      }
     };
     raf = requestAnimationFrame(tick);
   }
@@ -71,22 +82,27 @@ export function createScrub(o: ScrubOptions) {
         return;
       }
       stop();
+      moved = true;
       set(p + delta / o.distance());
       if (p >= 1) finish();
     },
-    /** Жест закончился: докатить или откатить. */
+    /** Жест закончился: путь остаётся, где отпустили. */
     release() {
-      if (animating || p === 0) return;
-      if (p >= COMMIT_AT) animateTo(1, PLAY_MS * (1 - p));
-      else animateTo(0, PLAY_MS * p);
+      if (animating || !moved) return;
+      moved = false;
+      if (p === 0) return cancel();
+      const to = o.settle?.(p) ?? p;
+      if (to > p) animateTo(to, Math.max(180, PLAY_MS * (to - p)), () => o.onRest?.(to));
+      else o.onRest?.(p);
     },
-    /** Кнопка «выше» или стрелка: весь путь сам. */
+    /** Кнопка «выше» или стрелка: остаток пути сам. */
     play() {
-      animateTo(1, PLAY_MS * (1 - p));
+      animateTo(1, (o.playMs?.() ?? PLAY_MS) * (1 - p), finish);
     },
     reset() {
       stop();
       p = 0;
+      moved = false;
     },
   };
 }

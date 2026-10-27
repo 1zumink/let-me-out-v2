@@ -1,50 +1,103 @@
-// «Отпусти» (этаж 8): читатель держит героя — герой висит под курсором или пальцем.
-// Реплики идут по порядку; отпустить можно после «А теперь отпусти», кнопка «отпустить» дублирует.
+// «Отпусти» (этаж 8): герой долез до стекла экрана. Камера подъезжает к нему вплотную,
+// он прижимает ладонь к стеклу — к нашему экрану — и говорит. После «А теперь отпусти» —
+// клик или тап по нему (кнопка «отпустить» — то же с клавиатуры): пальцы соскальзывают.
 // Первый круг — падение без крика и темнота; второй — герой садится на нижнюю кромку окна.
 import { h } from '../dom';
-import { bindHold } from '../input';
 import { focus, motion } from '../a11y';
+import type { Line } from '../data';
 import { scope, type GameFactory } from './common';
 
 const LONG_MS = 20000;
+const ZOOM = 2.2;
+const BASE = import.meta.env.BASE_URL;
+
+const textOf = (l: Line) => (typeof l === 'string' ? l : l.text);
+
+/** Ладонь с той стороны стекла: рисунок автора, если есть, иначе — та же линия, что у героя. */
+function Palm() {
+  const el = h('div.palm', { 'aria-hidden': 'true' });
+  const img = h('img.palm__img', { src: `${BASE}assets/collage/palm.webp`, alt: '', decoding: 'async' });
+  img.addEventListener('error', () => {
+    img.remove();
+    el.insertAdjacentHTML(
+      'beforeend',
+      `<svg class="palm__svg" viewBox="0 0 200 240"><path d="M62 228 C40 196 34 160 40 128 L36 72 C35 60 52 58 55 70 L62 118 L60 40 C59 26 78 25 80 39 L84 112 L88 26 C89 12 108 13 108 27 L106 112 L114 40 C116 27 134 29 132 43 L126 122 L144 96 C152 84 168 92 162 106 L136 170 C126 198 112 214 104 228"/><path class="palm__print" d="M66 150 q22 -8 46 0 M70 170 q20 -6 40 0 M78 190 q14 -4 28 0"/></svg>`,
+    );
+  });
+  el.append(h('div.palm__fog'), img);
+  return el;
+}
 
 export const createLetgo: GameFactory = (ctx, onDone) => {
   const s = scope(ctx);
   const { hero, ui } = ctx;
-  // поза у кромки стекла; запоминается на старте — место монтируется ещё до подъёма
-  let home: [number, number] = [50, 50];
-  let holding = false;
+  const stage = () => ctx.el.closest<HTMLElement>('.stage');
   let ready = false; // «А теперь отпусти» уже сказано
   let released = false;
-  let holdTimer = 0;
+  let longTimer = 0;
   const hint = ctx.hint();
 
-  const hands = s.own(h('div.grip.grip--hands', { role: 'button', tabindex: '0', 'aria-label': ui.letgoTarget, 'aria-pressed': 'false' }));
+  // клик по герою: зона на его теле (у .hero нет событий указателя) и сама ладонь
+  const target = s.own(h('div.grip.grip--letgo', { role: 'button', tabindex: '0', 'aria-label': ui.letgoTarget }));
   const button = s.own(h('button.btn', { type: 'button' }, ui.letgo));
+  const palm = s.own(Palm());
 
-  // держит дальше — ещё две реплики по 20 секунд
-  const armLong = () => {
-    s.clear(holdTimer);
-    holdTimer = s.after(LONG_MS, async () => {
-      if (!holding || released) return;
-      await ctx.say(ctx.lines('hold20'));
-      holdTimer = s.after(LONG_MS, () => holding && !released && ctx.say(ctx.lines('hold40')));
-    });
+  /** Камера подъезжает к герою: мир, герой и свет увеличиваются вокруг его груди у стекла. */
+  let zoomed: Animation[] = [];
+  const closeup = (on: boolean) => {
+    const st = stage();
+    if (!st) return;
+    const layers = ['.world', '.hero-layer', '.light'].map((q) => st.querySelector<HTMLElement>(q)!).filter(Boolean);
+    if (on) {
+      const r = hero.el.getBoundingClientRect();
+      const box = layers[1].getBoundingClientRect();
+      const origin = `${((r.left + r.width / 2 - box.left) / box.width) * 100}% ${((r.top + r.height * 0.3 - box.top) / box.height) * 100}%`;
+      for (const el of layers) el.style.transformOrigin = origin;
+    } else if (!zoomed.length) return;
+    const ms = motion.reduced() ? 0 : on ? 2500 : 900;
+    const [from, to] = on ? ['1', String(ZOOM)] : [String(ZOOM), '1'];
+    zoomed.forEach((a) => a.cancel());
+    zoomed = layers.map((el) => el.animate([{ scale: from }, { scale: to }], { duration: ms, easing: 'cubic-bezier(.45,0,.25,1)', fill: 'forwards' }));
+    if (!on) {
+      const done = zoomed;
+      Promise.all(done.map((a) => a.finished)).then(
+        () => done.forEach((a) => a.cancel()),
+        () => {},
+      );
+      zoomed = [];
+    }
   };
 
-  const follow = (e: PointerEvent) => {
-    if (!holding || released) return;
-    const r = ctx.el.getBoundingClientRect();
-    // герой висит под указателем: его рука — в руке читателя
-    hero.place(((e.clientX - r.left) / r.width) * 100, ((e.clientY - r.top) / r.height) * 100, 'hands');
+  /** Ладонь ложится на стекло, два-три тихих толчка — без звука, экран чуть вздрагивает. */
+  const touch = async () => {
+    hero.set('palm');
+    stage()?.append(palm);
+    await ctx.wait(motion.reduced() ? 0 : 500);
+    palm.classList.add('is-on');
+    if (motion.reduced()) return;
+    for (let i = 0; i < 3; i++) {
+      await ctx.wait(i ? 520 : 900);
+      if (s.signal.aborted) return;
+      palm.animate([{ scale: '1' }, { scale: '1.035' }, { scale: '1' }], { duration: 260, easing: 'ease-out' });
+      stage()?.querySelector('.world')?.animate([{ translate: '0 0' }, { translate: '0 2px' }, { translate: '0 0' }], { duration: 200 });
+    }
+  };
+
+  // долго не отпускает — ещё две реплики по 20 секунд
+  const armLong = () => {
+    s.clear(longTimer);
+    longTimer = s.after(LONG_MS, async () => {
+      if (released) return;
+      await ctx.say(ctx.lines('hold20'));
+      longTimer = s.after(LONG_MS, () => !released && ctx.say(ctx.lines('hold40')));
+    });
   };
 
   const fall = async () => {
     if (ctx.lap === 2) {
-      // после второго круга падения нет: герой сидит на нижней кромке окна и смотрит на читателя
-      hero.el.classList.remove('is-tracking');
+      // после второго круга падения нет: герой съезжает по стеклу на нижнюю кромку окна и садится
+      await hero.go(50, 100, { state: 'fall', ms: motion.reduced() ? 0 : 900, stride: 30, signal: s.signal });
       hero.set('sit');
-      hero.place(50, 100);
       await ctx.wait(1200);
       return onDone();
     }
@@ -63,13 +116,16 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
   };
 
   const release = () => {
-    if (released) return;
+    if (!ready || released) return;
     released = true;
     hint.stop();
-    s.clear(holdTimer);
-    hands.remove();
+    s.clear(longTimer);
+    target.remove();
     button.remove();
-    hero.el.classList.remove('is-tracking');
+    // ладонь соскальзывает со стекла, камера отъезжает
+    palm.classList.remove('is-on');
+    palm.classList.add('is-off');
+    closeup(false);
     if (ctx.lap === 2) return void fall();
     // пальцы раскрываются — и падение; страховка, если последний кадр не наступит (пауза, сбой загрузки)
     let fell = false;
@@ -79,52 +135,38 @@ export const createLetgo: GameFactory = (ctx, onDone) => {
   };
 
   return {
-    start() {
+    async start() {
       hint.poke();
-      home = hero.position;
       hero.set('hang');
-      hero.attach(hands);
-      bindHold(
-        hands,
-        {
-          onStart: () => {
-            holding = true;
-            hint.poke();
-            hero.set('held');
-            hands.setAttribute('aria-pressed', 'true');
-            hands.classList.add('is-held');
-            hero.el.classList.add('is-tracking');
-            if (ready) armLong();
-          },
-          onEnd: () => {
-            holding = false;
-            hands.setAttribute('aria-pressed', 'false');
-            hands.classList.remove('is-held');
-            if (ready) return release();
-            // отпустил раньше времени — герой снова висит на краю стекла
-            hero.el.classList.remove('is-tracking');
-            hero.set('hang');
-            hero.place(home[0], home[1]);
-          },
-        },
-        s.signal,
-      );
-      ctx.el.addEventListener('pointermove', follow, { signal: s.signal });
-      hands.addEventListener('pointermove', follow, { signal: s.signal });
+      hero.attach(target);
+      target.addEventListener('click', release, { signal: s.signal });
+      palm.addEventListener('click', release, { signal: s.signal });
+      target.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), release()), { signal: s.signal });
       button.addEventListener('click', release, { signal: s.signal });
-      focus(hands);
-      // реплики идут по порядку, держит читатель или нет
-      ctx.say(ctx.lines('sequence')).then(() => {
-        if (s.signal.aborted || released) return;
-        ready = true;
-        ctx.controls.append(button);
-        if (holding) armLong();
-        else focus(hands);
-      });
+
+      closeup(true);
+      await ctx.wait(motion.reduced() ? 0 : 2500);
+      if (s.signal.aborted) return;
+
+      // реплики по порядку; ладонь ложится на стекло, когда он понимает, что это стекло
+      const seq = ctx.lines('sequence');
+      const at = seq.findIndex((l) => textOf(l).includes('стекло'));
+      const split = at < 0 ? 0 : at;
+      await ctx.say(seq.slice(0, split));
+      if (s.signal.aborted) return;
+      void touch();
+      await ctx.say(seq.slice(split));
+      if (s.signal.aborted || released) return;
+      ready = true;
+      target.classList.add('is-ready');
+      ctx.controls.append(button);
+      focus(target);
+      armLong();
     },
     stop() {
       hint.stop();
-      hero.el.classList.remove('is-tracking');
+      zoomed.forEach((a) => a.cancel());
+      zoomed = [];
       s.dispose();
     },
   };

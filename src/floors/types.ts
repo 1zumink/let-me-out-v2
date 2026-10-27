@@ -4,6 +4,7 @@ import type { ScrollFn } from '../input';
 import type { Rng } from '../rng';
 import type { Lap } from '../state';
 import type { Action } from '../input';
+import type { Side } from '../climbPath';
 
 export interface Hint {
   /** Запуск и любое действие игрока: гасит подсказку и перезапускает 20-секундный таймер. */
@@ -50,9 +51,25 @@ export interface Pose {
   state: HeroState;
 }
 
+/** За что держаться в месте: стены, уступы. По этому строится путь подъёма (climbPath.ts). */
+export interface Ground {
+  /** Ширина левой и правой стены, %. */
+  walls: [number, number];
+  /** Уступы: края и верх, %. */
+  ledges: { x0: number; x1: number; y: number }[];
+  /** Какой стеной лезть. */
+  side?: Side;
+  /** Вход висит под потолком (стекло): последний отрезок — перехватами вдоль потолка. */
+  ceiling?: boolean;
+  /** Отсюда выходят не по стене места, а через щель (горло): её края, как стены. */
+  exit?: [number, number];
+}
+
 export interface Floor {
   /** Где и как герой оказывается, поднявшись сюда, — к этой позе ведёт прокрутка. */
   entry(): Pose;
+  /** Стены и уступы места. */
+  ground(): Ground;
   /** Строит место в слоте; камера ещё едет. */
   mount(ctx: FloorCtx): void;
   /** Камера приехала: расставить героя и свет. */

@@ -34,7 +34,10 @@ const shift = (p: Pose, dy: number): Pose => ({
   arms: p.arms.map(([e, h]) => [[e[0], e[1] + dy], [h[0], h[1] + dy]] as [P, P]),
 });
 
-const POSES: Record<Exclude<HeroState, 'ghost'>, Pose[]> = {
+// новые состояния без своих поз заглушки берут ближайшую
+const LIKE: Partial<Record<HeroState, HeroState>> = { mantle: 'climb', chimney: 'climb', fall: 'slip', palm: 'hang', ghost: 'idle' };
+
+const POSES: Partial<Record<HeroState, Pose[]>> = {
   idle: [stand, shift(stand, -2)],
   breathe: [stand, shift(stand, -4), shift(stand, -6), shift(stand, -3)],
   climb: [
@@ -62,6 +65,25 @@ const POSES: Record<Exclude<HeroState, 'ghost'>, Pose[]> = {
     { ...stand, wings: 1 },
     { ...stand, wings: 0 },
     { ...stand, wings: -1 },
+  ],
+  // идёт по уступу, вид сбоку: ноги ножницами
+  walk: [
+    { ...stand, arms: [[[120, 124], [112, 150]], [[138, 124], [146, 148]]], legs: [[[138, 198], [150, 236]], [[118, 198], [106, 236]]] },
+    { ...stand, legs: [[[128, 198], [132, 236]], [[130, 196], [124, 234]]] },
+    { ...stand, arms: [[[138, 124], [146, 150]], [[120, 124], [112, 148]]], legs: [[[118, 198], [106, 236]], [[138, 198], [150, 236]]] },
+    { ...stand, legs: [[[130, 196], [124, 234]], [[128, 198], [132, 236]]] },
+  ],
+  // лезет по стене справа: руки и ноги тянутся к кромке
+  wall: [
+    { ...stand, head: [136, 64], arms: [[[150, 70], [160, 40]], [[150, 120], [162, 108]]], legs: [[[150, 190], [160, 214]], [[142, 200], [158, 236]]] },
+    { ...stand, head: [136, 62], arms: [[[150, 112], [162, 100]], [[150, 72], [160, 44]]], legs: [[[142, 200], [158, 236]], [[150, 186], [160, 210]]] },
+  ],
+  // прыжок: сжался → полёт, руки вперёд → приземлился
+  jump: [
+    { ...stand, head: [128, 96], neck: [128, 120], hip: [124, 180], arms: [[[110, 150], [104, 176]], [[146, 150], [152, 176]]], legs: [[[146, 206], [128, 236]], [[110, 206], [124, 236]]] },
+    { ...stand, head: [140, 70], neck: [134, 92], hip: [120, 156], arms: [[[160, 84], [184, 70]], [[156, 96], [180, 86]]], legs: [[[108, 190], [92, 214]], [[120, 196], [100, 222]]] },
+    { ...stand, head: [140, 66], neck: [134, 88], hip: [124, 152], arms: [[[160, 78], [184, 62]], [[158, 90], [182, 78]]], legs: [[[146, 186], [150, 224]], [[130, 192], [138, 230]]] },
+    { ...stand, head: [128, 96], neck: [128, 120], hip: [128, 182], arms: [[[110, 140], [96, 160]], [[146, 140], [160, 160]]], legs: [[[146, 208], [142, 236]], [[110, 208], [114, 236]]] },
   ],
   letgo: [
     hangPose(0),
@@ -93,6 +115,6 @@ function render(p: Pose): string {
 }
 
 export function stickFrames(state: HeroState): string[] {
-  const key = state === 'ghost' ? 'idle' : state;
-  return POSES[key].map(render);
+  const frames = POSES[state] ?? POSES[LIKE[state] ?? 'idle'] ?? POSES.idle!;
+  return frames.map(render);
 }

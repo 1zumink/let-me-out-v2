@@ -105,11 +105,11 @@ export const createFlap: GameFactory = (ctx, onDone) => {
     btnL.remove();
     btnR.remove();
     rhythm.remove();
-    // дальше герой снова ездит плавно: под само горло
-    hero.el.classList.remove('is-tracking');
+    // долетает под само горло — тем же полётом, а не скольжением
     hero.el.style.rotate = '';
-    hero.place(50, FLAP.yTop);
     ctx.light(50, FLAP.yTop - 16);
+    await hero.go(50, FLAP.yTop, { state: 'fly', ms: 700, stride: 4, signal: s.signal });
+    if (s.signal.aborted) return;
     hero.set('idle');
     if (!landedOnce) {
       landedOnce = true;
@@ -132,10 +132,9 @@ export const createFlap: GameFactory = (ctx, onDone) => {
     memory.set({ wings: how });
     await say(how === 'folded' ? 'fold' : 'takeOff');
     if (s.signal.aborted) return;
-    // крылья больше не мешают — герой протискивается в горло
-    hero.set('climb');
-    hero.place(50, FLAP.yTop - 12);
-    ctx.after(1100, onDone);
+    // крылья больше не мешают — герой протискивается в горло, упираясь в его стенки
+    await hero.go(50, FLAP.yTop - 12, { state: 'chimney', ms: 1100, stride: 5, signal: s.signal });
+    if (!s.signal.aborted) onDone();
   };
 
   return {

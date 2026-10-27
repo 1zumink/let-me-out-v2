@@ -16,6 +16,6 @@ for (const [state, { frames }] of Object.entries(hero)) {
     console.log(`${ok ? '✓' : '✗'} ${p}: ${width}×${height}${ok ? '' : `, ожидалось ${frames * 256}×256`}`);
   }
 }
-if (missing.length) console.log(`\nНе хватает (герой покажет SVG-заглушку):\n  ${missing.join('\n  ')}`);
+if (missing.length) console.log(`\nНе хватает (герой возьмёт запасную ленту из FALLBACK в hero.ts или SVG-заглушку):\n  ${missing.join('\n  ')}`);
 if (!hero.ghost) console.log('ghost — отдельный файл не нужен (idle + пунктир в CSS).');
 if (bad) process.exit(1);

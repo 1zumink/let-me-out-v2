@@ -9,5 +9,12 @@
   "letgo":   { "frames": 5, "fps": 8,  "loop": false, "align": "top" },
   "sit":     { "frames": 4, "fps": 3,  "loop": true },
   "held":    { "frames": 4, "fps": 4,  "loop": true, "align": "top" },
-  "ghost":   { "frames": 4, "fps": 4,  "loop": true }
+  "ghost":   { "frames": 4, "fps": 4,  "loop": true },
+  "walk":    { "frames": 6, "fps": 8,  "loop": true },
+  "wall":    { "frames": 6, "fps": 8,  "loop": true },
+  "jump":    { "frames": 8, "fps": 12, "loop": false },
+  "mantle":  { "frames": 6, "fps": 8,  "loop": false },
+  "fall":    { "frames": 4, "fps": 8,  "loop": true },
+  "chimney": { "frames": 4, "fps": 4,  "loop": true },
+  "palm":    { "frames": 4, "fps": 4,  "loop": false, "align": "top" }
 }

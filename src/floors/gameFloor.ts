@@ -5,7 +5,7 @@ import type { HeroState } from '../hero/hero';
 import type { Line } from '../data';
 import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
 import { texturedWalls } from '../scene/textures';
-import type { Floor, FloorCtx, Pose } from './types';
+import type { Floor, FloorCtx, Ground, Pose } from './types';
 
 export interface GameFloorOptions {
   heroAt?: [number, number];
@@ -16,6 +16,8 @@ export interface GameFloorOptions {
   restAt?: [number, number];
   restState?: HeroState;
   world?: SilhouetteOptions;
+  /** Своё к стенам и уступам силуэта: выступы этажа, сторона, горло. */
+  ground?: (ctx: FloorCtx) => Partial<Ground>;
   /** Свет при входе: x, y, радиус; по умолчанию — над героем. */
   light?: [number, number, number];
   decorate?: (ctx: FloorCtx) => void;
@@ -31,13 +33,16 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
   let game: Game | null = null;
   const [x, y] = opts.heroAt ?? [50, 78];
 
+  const world = opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] };
+
   const entry = (): Pose => ({ x, y, anchor: opts.heroAnchor, state: opts.heroState ?? 'idle' });
 
   return {
     entry,
+    ground: () => groundOf(world, opts.ground?.(ctx)),
     mount(c) {
       ctx = c;
-      const walls = silhouette(c.rng, opts.world ?? { ledges: [{ x0: x - 22, x1: x + 22, y }] });
+      const walls = silhouette(c.rng, world);
       c.el.append(walls);
       opts.decorate?.(c);
       // фактура — после decorate: этажи дорисовывают в силуэт свои выступы
@@ -47,9 +52,8 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
       game = make ? make(c, () => c.done()) : null;
     },
     arrive() {
-      // после подъёма герой уже стоит в позе входа — place ничего не сдвигает
+      // после подъёма герой уже стоит в позе входа и смотрит, куда шёл
       ctx.hero.reset();
-      ctx.hero.flip(false);
       ctx.hero.put(x, y, opts.heroAnchor);
       ctx.hero.set(entry().state);
       if (opts.light) ctx.light(...opts.light);
@@ -76,5 +80,16 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
       game?.stop();
       ctx.el.replaceChildren();
     },
+  };
+}
+
+/** Стены и уступы из силуэта; место дополняет своими. */
+export function groundOf(world: SilhouetteOptions, extra: Partial<Ground> = {}): Ground {
+  const w = world.wall ?? 11;
+  return {
+    walls: [w, w],
+    ceiling: world.glass !== undefined,
+    ...extra,
+    ledges: [...(world.ledges ?? []).map(({ x0, x1, y }) => ({ x0, x1, y })), ...(extra.ledges ?? [])],
   };
 }

@@ -222,13 +222,8 @@ a {
   left: 50%;
   top: 78%;
   translate: -50% -92.19%;
-  transition:
-    left 0.9s ease-in-out,
-    top 0.9s ease-in-out;
+  /* без перехода по left/top: герой не скользит по воздуху — каждое перемещение идёт путём (hero.go, climbPath) */
   pointer-events: none;
-}
-.is-reduced .hero {
-  transition: none;
 }
 .hero__sprite,
 .hero__svg {

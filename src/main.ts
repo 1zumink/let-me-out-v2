@@ -22,6 +22,7 @@ import { Atmosphere, FilterDefs, Grain } from './scene/Atmosphere';
 import { startBoilClock } from './scene/boil';
 import { createSideScenes } from './scenes/sideScenes';
 import { createScrub } from './scrub';
+import { climbPath, type ClimbPath, type Footing } from './climbPath';
 import { pickMoment } from './lines';
 import type { Floor, FloorCtx, Hint } from './floors/types';
 
@@ -221,29 +222,48 @@ function enterFloor() {
   world.style.setProperty('--floor', String(index));
   teardown(current);
   current = c;
+  hero.flip(false);
+  // монтажная склейка, а не путь: из темноты, чтобы герой не «перескакивал» на глазах
+  if (!motion.reduced()) for (const el of [world, heroLayer]) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: 'ease-out' });
   runPlace(c);
 }
 
 // ── подъём за прокруткой ──────────────────────────────
-// Пока читатель листает, камера и герой идут вместе: герой лезет от своей позы к позе входа
-// следующего места. Отпустил на трети — докатывается, раньше — откатывается.
+// Пока читатель листает, герой идёт по пути climbPath.ts: по уступу к стене, прыжок, вверх по кромке,
+// прыжок на уступ следующего места. Камера идёт за пройденной высотой. Отпустил — держится, где был;
+// начатый прыжок допрыгивает сам.
 let pending: Current | null = null;
-let from: [number, number] = [50, 80];
-let to: [number, number] = [50, 80];
+let path: ClimbPath | null = null;
 let restState = hero.state;
 
+/** Где герой стоит в месте: уступ под ногами (если есть) и стены, по которым отсюда лезть. */
+function footing(c: Current, x: number, y: number, state: Footing['state'], leaving: boolean): Footing {
+  const g = c.floor.ground();
+  const ledge = g.ledges.find((l) => x >= l.x0 - 1 && x <= l.x1 + 1 && Math.abs(l.y - y) < 2.5);
+  return { walls: (leaving && g.exit) || g.walls, ledge, x, y, state, side: g.side, ceiling: g.ceiling };
+}
+
 const climb = createScrub({
-  distance: () => world.clientHeight * 1.2,
+  // листать столько, сколько идти: путь в % высоты сцены
+  distance: () => (world.clientHeight * (path?.length ?? 120)) / 100,
+  playMs: () => (1400 * (path?.length ?? 100)) / 100,
   instant: motion.reduced,
+  settle: (p) => path?.settle(p) ?? p,
   onProgress(p) {
-    world.style.setProperty('--floor', String(store.get().floor + p));
-    hero.place(from[0] + (to[0] - from[0]) * p, from[1] + (to[1] - from[1]) * p);
-    const moving = p > 0 && p < 1;
-    if (moving && hero.state !== 'climb') hero.set('climb');
+    if (!path) return;
+    const pose = path.at(p);
+    world.style.setProperty('--floor', String(store.get().floor + pose.v));
+    // y пути — в мире текущего места; на экране он сдвинут на пройденную камерой высоту
+    hero.place(pose.x, pose.y + pose.v * 100);
+    hero.flip(pose.left);
+    hero.scrub(pose.state, pose.t);
   },
+  // встал посреди шага — стоит, а не замирает на одной ноге; на стене и в висе кадр и так стоит
+  onRest(p) {
+    if (path?.at(p).kind === 'walk') hero.set('idle');
+  },
+  // следующее место остаётся смонтированным — классы слежения не снимаем, чтобы новый подъём шёл без запаздывания
   onCancel() {
-    world.classList.remove('is-scrubbing');
-    hero.el.classList.remove('is-tracking');
     hero.set(restState);
   },
   onDone: commitClimb,
@@ -254,10 +274,10 @@ function canClimb() {
   return !intro.isOpen && !exitScreen.isOpen && !upAction && s.phase === 'stop' && !upBtn.hidden && s.floor < route.length - 1;
 }
 
-/** Готовит подъём: следующее место смонтировано над текущим, герой — в режиме слежения. */
+/** Готовит подъём: следующее место смонтировано над текущим, путь до его позы входа построен. */
 function beginClimb(): boolean {
   if (pending) return true;
-  if (!canClimb()) return false;
+  if (!canClimb() || !current) return false;
   pending = mountPlace(store.get().floor + 1);
   bubbles.clear();
   sideScenes.close();
@@ -265,10 +285,10 @@ function beginClimb(): boolean {
   world.classList.add('is-scrubbing');
   hero.reset();
   hero.el.classList.add('is-tracking');
-  from = hero.position;
-  const e = pending.floor.entry();
-  to = [e.x, hero.toFeet(e.y, e.anchor)];
   restState = hero.state;
+  const [hx, hy] = hero.position;
+  const e = pending.floor.entry();
+  path = climbPath(footing(current, hx, hy, hero.state, true), footing(pending, e.x, hero.toFeet(e.y, e.anchor), e.state, false), hero.box());
   return true;
 }
 
@@ -276,6 +296,7 @@ function commitClimb() {
   const next = pending;
   if (!next) return;
   pending = null;
+  path = null;
   upBtn.hidden = true;
   store.phase('exit');
   store.nextFloor();
@@ -310,6 +331,9 @@ function showQuote(c: Current, layer?: HTMLElement) {
 
 /** Свет — по настоящему центру надписи (у края экрана её прижимает CSS) и такой ширины, чтобы углы не тонули в тени. */
 function lightQuote(c: Current, el: HTMLElement) {
+  // надпись — часть стены: сразу за силуэтом и фактурой, под предметами этажа
+  const walls = c.slot.querySelectorAll(':scope > .silhouette, :scope > .walls-texture');
+  walls[walls.length - 1]?.after(el);
   const q = el.getBoundingClientRect();
   const l = lightEl.getBoundingClientRect();
   const x = ((q.left + q.width / 2 - l.left) / l.width) * 100;
@@ -394,6 +418,7 @@ function restart(lap: Lap) {
   climb.reset();
   teardown(pending);
   pending = null;
+  path = null;
   world.classList.remove('is-scrubbing');
   const prev = current;
   current = null;

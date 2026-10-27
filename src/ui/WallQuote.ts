@@ -6,6 +6,19 @@ import { Footnote } from './Footnote';
 
 let current: HTMLElement | null = null;
 
+/** Рваный край штриха: буквы чуть сдвинуты шумом, как мел по шершавой стене. Надпись одна — id не повторится. */
+function chalkEdge() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'wall-quote__defs');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  svg.innerHTML = `<filter id="wall-chalk" x="-2%" y="-10%" width="104%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>`;
+  return svg;
+}
+
 export function WallQuote(q: Quote, { x, y, rng }: { x: number; y: number; rng: Rng }) {
   // на экране не больше одной надписи
   current?.remove();
@@ -24,6 +37,7 @@ export function WallQuote(q: Quote, { x, y, rng }: { x: number; y: number; rng: 
   const el = h(
     'figure.wall-quote',
     {},
+    chalkEdge(),
     text,
     h('figcaption.wall-quote__by', {}, `— ${q.by ?? q.author}`, Footnote(q)),
   );

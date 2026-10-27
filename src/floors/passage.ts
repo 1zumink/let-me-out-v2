@@ -1,26 +1,34 @@
 // Проход между этажами: пока читатель листает вверх, мимо проплывают вещи в нишах — по реплике на каждую.
-// Полка едет за прокруткой, герой лезет; в покое висит на кольце или корне, ноги свисают.
+// Полка едет за прокруткой, герой лезет по стене напротив вещей; в покое держится за стену.
 import { h } from '../dom';
 import { focus, motion } from '../a11y';
 import { createScrub, type Scrub } from '../scrub';
 import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
 import { texturedWalls } from '../scene/textures';
-import type { Floor, FloorCtx, Pose } from './types';
+import { wallX } from '../climbPath';
+import { groundOf } from './gameFloor';
+import type { Floor, FloorCtx, Ground, Pose } from './types';
 
 const SHIFT = 7; // % — на столько уезжают ниши за одно «листай»
-const ENTRY: Pose = { x: 50, y: 46, anchor: 'hands', state: 'hang' };
+const Y = 46; // руки на стене
 
 export function passage(opts: { world?: SilhouetteOptions; decorate?: (ctx: FloorCtx) => void } = {}): Floor {
   let ctx: FloorCtx;
   const items: HTMLElement[] = [];
   const shelf = h('div.passage');
   let scrub: Scrub | null = null;
+  const world = opts.world ?? { wall: 14 };
+  // лезет по стене напротив вещей, чтобы не закрывать их
+  const ground = (): Ground => groundOf(world, { side: (ctx?.data.collage?.[0]?.x ?? 72) < 50 ? 'right' : 'left' });
+  const entry = (): Pose => ({ x: wallX(ground().walls, ground().side!, ctx.hero.box()), y: Y, anchor: 'hands', state: 'wall' });
+  const hold = () => ctx.hero.scrub('wall', 0);
 
   return {
-    entry: () => ENTRY,
+    entry,
+    ground,
     mount(c) {
       ctx = c;
-      const walls = silhouette(c.rng, opts.world ?? { wall: 14 });
+      const walls = silhouette(c.rng, world);
       c.el.append(walls);
       opts.decorate?.(c);
       const tex = texturedWalls(walls, (c.data.params as { texture?: string } | undefined)?.texture);
@@ -38,9 +46,11 @@ export function passage(opts: { world?: SilhouetteOptions; decorate?: (ctx: Floo
       c.el.append(shelf);
     },
     arrive() {
+      const e = entry();
       ctx.hero.reset();
-      ctx.hero.put(ENTRY.x, ENTRY.y, ENTRY.anchor);
-      ctx.hero.set(ENTRY.state);
+      ctx.hero.put(e.x, e.y, e.anchor);
+      ctx.hero.flip(ground().side === 'left');
+      hold();
       ctx.light(50, 50);
     },
     async start() {
@@ -68,11 +78,10 @@ export function passage(opts: { world?: SilhouetteOptions; decorate?: (ctx: Floo
               instant: motion.reduced,
               onProgress: (p) => {
                 shelf.style.setProperty('--shift', `${from + p * SHIFT}%`);
-                const moving = p > 0 && p < 1;
-                if (moving && ctx.hero.state !== 'climb') ctx.hero.set('climb');
-                if (!moving && ctx.hero.state !== 'hang') ctx.hero.set('hang');
+                // кадр перехвата — по пройденному пути: встала прокрутка — встали руки
+                ctx.hero.scrub('wall', (p * 1.5) % 1);
               },
-              onCancel: () => ctx.hero.set('hang'),
+              onCancel: hold,
               onDone: resolve,
             });
           });
