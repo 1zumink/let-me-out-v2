@@ -24,6 +24,10 @@ export interface CollageItem {
   y: number;
   w: number;
   rot?: number;
+  /** стоит на столе комнаты: x — в процентах ширины стола */
+  on?: 'table';
+  /** лежит на полу (ковёр): сплющен по вертикали, как в перспективе */
+  flat?: boolean;
   /** раскладка для узких экранов (до 560 px) */
   xs?: { x: number; y: number; w: number };
 }

@@ -1,11 +1,12 @@
 // Сырые картинки ChatGPT → вырезки коллажа и фактуры.
-//   raw/collage/<id>.(png|jpg|webp) → public/assets/collage/<id>.webp (альфа, обрезка, ≤ 900 px)
+//   raw/collage/<id>.(png|jpg|webp) → public/assets/collage/<id>.webp (альфа, обрезка, ≤ 480 px)
 //   raw/textures/<id>.(jpg|png)     → src/assets/textures/<id>.webp (ч/б тайл 512×512, без альфы; в сборку попадают только существующие)
 // Фон у ChatGPT — белый или нарисованная серая шахматка без альфы. Убираем его заливкой от краёв:
 // соседние светлые пиксели с низкой насыщенностью. Белые места внутри предмета (лист, циферблат)
 // краёв не касаются и остаются. Ч/б и белую «ножничную» обводку вырезкам даёт CSS.
 // После обработки в data/*.json пути assets/collage/<id>.svg меняются на .webp.
-// Запуск из корня проекта: npm run collage:normalize [-- id …] [-- --no-blend]
+// Мягкую серую тень предмета на фоне тоже убираем (--keep-shadows оставляет).
+// Запуск из корня проекта: npm run collage:normalize [-- id …] [-- --no-blend] [-- --keep-shadows]
 import sharp from 'sharp';
 import { readFile, writeFile, readdir, mkdir, access } from 'node:fs/promises';
 
@@ -13,14 +14,19 @@ const RAW_COLLAGE = 'raw/collage';
 const RAW_TEXTURES = 'raw/textures';
 const OUT_COLLAGE = 'public/assets/collage';
 const OUT_TEXTURES = 'src/assets/textures';
-const MAX_SIDE = 900;
+const MAX_SIDE = 480; // на экране вещь не больше ~250 px — запас на двойную плотность
 const PAD = 2; // прозрачный запас вокруг вырезки, чтобы края не резались при ресайзе
 const TILE = 512;
 const SAT = 28; // max − min канала: у фона почти ноль, у шахматки тоже
 const TOL = 14; // запас вниз от самого тёмного тона фона
+// тень от предмета на белом фоне: серая, гладкая, без контура — её тоже убираем
+const SHADOW_SAT = 24;
+const SHADOW_LUM = 105;
+const SHADOW_GRAD = 7; // перепад яркости к соседям: у тени мягкий, на контуре предмета резкий
 
 const args = process.argv.slice(2);
 const noBlend = args.includes('--no-blend');
+const keepShadows = args.includes('--keep-shadows');
 const only = args.filter((a) => !a.startsWith('--'));
 
 const exists = async (p) => access(p).then(() => true, () => false);
@@ -91,8 +97,37 @@ function cutBackground(data, w, h) {
     if (i >= w) seed(i - w);
     if (i < n - w) seed(i + w);
   }
+  if (floor !== null && !keepShadows) eatShadows(data, w, h, bg);
   dropSpecks(bg, w, h);
   return { bg, floor };
+}
+
+// Вторая заливка от уже найденного фона — по гладким серым пикселям тени. Контур предмета даёт резкий
+// перепад яркости, и заливка на нём останавливается; белое внутри предмета (чашка, циферблат) не трогаем.
+function eatShadows(data, w, h, bg) {
+  const n = w * h;
+  const lum = new Float32Array(n);
+  for (let i = 0; i < n; i++) lum[i] = (data[i * 4] + data[i * 4 + 1] + data[i * 4 + 2]) / 3;
+  const soft = (i) => {
+    const o = i * 4;
+    const r = data[o], g = data[o + 1], b = data[o + 2];
+    if (Math.max(r, g, b) - Math.min(r, g, b) > SHADOW_SAT || lum[i] < SHADOW_LUM) return false;
+    const x = i % w;
+    let grad = 0;
+    if (x > 0) grad = Math.max(grad, Math.abs(lum[i] - lum[i - 1]));
+    if (x < w - 1) grad = Math.max(grad, Math.abs(lum[i] - lum[i + 1]));
+    if (i >= w) grad = Math.max(grad, Math.abs(lum[i] - lum[i - w]));
+    if (i < n - w) grad = Math.max(grad, Math.abs(lum[i] - lum[i + w]));
+    return grad <= SHADOW_GRAD;
+  };
+  const stack = [];
+  for (let i = 0; i < n; i++) if (bg[i]) stack.push(i);
+  while (stack.length) {
+    const i = stack.pop();
+    const x = i % w;
+    const next = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i >= w ? i - w : -1, i < n - w ? i + w : -1];
+    for (const k of next) if (k >= 0 && !bg[k] && soft(k)) { bg[k] = 1; stack.push(k); }
+  }
 }
 
 // мелкие островки (шум JPEG, пятна на фоне) тоже становятся фоном; несколько крупных частей

@@ -6,5 +6,8 @@
   "breathe": { "frames": 4, "fps": 3,  "loop": true },
   "fly":     { "frames": 6, "fps": 10, "loop": true },
   "hang":    { "frames": 4, "fps": 6,  "loop": true, "align": "top" },
-  "letgo":   { "frames": 5, "fps": 8,  "loop": false, "align": "top" }
+  "letgo":   { "frames": 5, "fps": 8,  "loop": false, "align": "top" },
+  "sit":     { "frames": 4, "fps": 3,  "loop": true },
+  "held":    { "frames": 4, "fps": 4,  "loop": true, "align": "top" },
+  "ghost":   { "frames": 4, "fps": 4,  "loop": true }
 }

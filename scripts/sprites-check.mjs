@@ -17,5 +17,5 @@ for (const [state, { frames }] of Object.entries(hero)) {
   }
 }
 if (missing.length) console.log(`\nНе хватает (герой покажет SVG-заглушку):\n  ${missing.join('\n  ')}`);
-console.log('ghost — отдельный файл не нужен (idle/fly + фильтр).');
+if (!hero.ghost) console.log('ghost — отдельный файл не нужен (idle + пунктир в CSS).');
 if (bad) process.exit(1);

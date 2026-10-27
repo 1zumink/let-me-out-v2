@@ -436,7 +436,7 @@
       }
     ],
     "image": {
-      "src": "assets/collage/phone.svg",
+      "src": "assets/collage/phone.webp",
       "alt": "старый дисковый телефон в стене"
     }
   },
@@ -490,7 +490,7 @@
       }
     ],
     "image": {
-      "src": "assets/collage/sock.svg",
+      "src": "assets/collage/sock.webp",
       "alt": "носок на выступе"
     }
   }

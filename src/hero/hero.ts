@@ -147,6 +147,8 @@ export class Hero {
     const key = this.stripFor(this._state);
     const strip = this.spec[key];
     this.stop();
+    // какая лента реально играет: у настоящей ленты призрака пунктир уже нарисован
+    this.el.dataset.strip = key;
     const webp = `${this.base}assets/hero/${key}.webp`;
     const png = `${this.base}assets/hero/${key}.png`;
     let url: string | null = null;

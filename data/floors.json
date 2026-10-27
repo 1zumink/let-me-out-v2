@@ -124,7 +124,7 @@
       {
         "id": "window",
         "label": "нарисованное окно",
-        "src": "assets/collage/window.svg",
+        "src": "assets/collage/window.webp",
         "x": 30,
         "y": 44,
         "w": 14,
@@ -137,7 +137,7 @@
       {
         "id": "clock",
         "label": "часы",
-        "src": "assets/collage/clock.svg",
+        "src": "assets/collage/clock.webp",
         "x": 47,
         "y": 26,
         "w": 8,
@@ -150,7 +150,7 @@
       {
         "id": "calendar",
         "label": "календарь",
-        "src": "assets/collage/calendar.svg",
+        "src": "assets/collage/calendar.webp",
         "x": 58,
         "y": 34,
         "w": 8,
@@ -163,7 +163,7 @@
       {
         "id": "photo",
         "label": "фотография",
-        "src": "assets/collage/photo.svg",
+        "src": "assets/collage/photo.webp",
         "x": 68,
         "y": 30,
         "w": 8,
@@ -176,7 +176,7 @@
       {
         "id": "books",
         "label": "полка с книгами",
-        "src": "assets/collage/books.svg",
+        "src": "assets/collage/books.webp",
         "x": 70,
         "y": 48,
         "w": 16,
@@ -189,12 +189,12 @@
       {
         "id": "coat",
         "label": "вешалка с пальто",
-        "src": "assets/collage/coat.svg",
+        "src": "assets/collage/coat.webp",
         "x": 16,
         "y": 84,
         "w": 10,
         "xs": {
-          "x": 24,
+          "x": 21,
           "y": 84,
           "w": 11
         }
@@ -202,12 +202,12 @@
       {
         "id": "chair",
         "label": "стул с пиджаком",
-        "src": "assets/collage/chair-jacket.svg",
+        "src": "assets/collage/chair-jacket.webp",
         "x": 33,
         "y": 84,
         "w": 10,
         "xs": {
-          "x": 40,
+          "x": 43,
           "y": 84,
           "w": 12
         }
@@ -215,33 +215,35 @@
       {
         "id": "cup",
         "label": "чашка",
-        "src": "assets/collage/cup.svg",
-        "x": 43,
-        "y": 72,
+        "src": "assets/collage/cup.webp",
+        "x": 17,
+        "y": 0,
         "w": 5,
         "xs": {
-          "x": 56,
-          "y": 70,
-          "w": 9
-        }
+          "x": 24,
+          "y": 0,
+          "w": 8
+        },
+        "on": "table"
       },
       {
         "id": "lamp",
         "label": "лампа",
-        "src": "assets/collage/desk-lamp.svg",
-        "x": 56,
-        "y": 72,
-        "w": 6,
+        "src": "assets/collage/desk-lamp.webp",
+        "x": 84,
+        "y": 0,
+        "w": 8,
         "xs": {
-          "x": 71,
-          "y": 70,
-          "w": 10
-        }
+          "x": 78,
+          "y": 0,
+          "w": 11
+        },
+        "on": "table"
       },
       {
         "id": "bed",
         "label": "кровать",
-        "src": "assets/collage/bed.svg",
+        "src": "assets/collage/bed.webp",
         "x": 76,
         "y": 84,
         "w": 22,
@@ -254,31 +256,32 @@
       {
         "id": "rug",
         "label": "ковёр",
-        "src": "assets/collage/rug.svg",
-        "x": 50,
-        "y": 93,
-        "w": 28,
+        "src": "assets/collage/rug.webp",
+        "x": 52,
+        "y": 95,
+        "w": 30,
         "xs": {
           "x": 54,
           "y": 97,
-          "w": 34
-        }
+          "w": 36
+        },
+        "flat": true
       }
     ],
     "params": {
       "table": {
-        "src": "assets/collage/table.svg",
+        "src": "assets/collage/table.webp",
         "x": 49,
         "y": 84,
         "w": 24,
         "xs": {
-          "x": 60,
+          "x": 58,
           "y": 84,
-          "w": 26
+          "w": 34
         }
       },
       "wings": {
-        "src": "assets/collage/wings.svg",
+        "src": "assets/collage/wings.webp",
         "x": 16,
         "y": 70,
         "w": 14,

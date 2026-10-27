@@ -2,3 +2,7 @@ node_modules
 dist
 .DS_Store
 *.log
+
+# сырьё картинок из ChatGPT (~75 МБ): в игру идут обработанные webp
+raw/collage/
+raw/textures/

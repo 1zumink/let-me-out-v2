@@ -6,49 +6,49 @@
     {
       "id": "jar",
       "label": "банка «Крыжовник, 1987»",
-      "src": "assets/collage/jar.svg",
+      "src": "assets/collage/jar.webp",
       "line": "Банка. «Крыжовник, 1987». Открывать не буду. Вдруг там тоже кто-то сидит.",
       "w": 12
     },
     {
       "id": "clock-nohands",
       "label": "часы без стрелок",
-      "src": "assets/collage/clock-nohands.svg",
+      "src": "assets/collage/clock-nohands.webp",
       "line": "Часы без стрелок. Очень честные часы.",
       "w": 12
     },
     {
       "id": "sign",
       "label": "табличка «Не прислоняться»",
-      "src": "assets/collage/sign.svg",
+      "src": "assets/collage/sign.webp",
       "line": "Табличка «Не прислоняться». Тут, если честно, больше не к чему.",
       "w": 22
     },
     {
       "id": "drawing",
       "label": "детский рисунок: солнце, дом, человечек",
-      "src": "assets/collage/drawing.svg",
+      "src": "assets/collage/drawing.webp",
       "line": "Детский рисунок: солнце, дом, человечек. Человечек снаружи дома. Повезло ему.",
       "w": 18
     },
     {
       "id": "roots",
       "label": "корни",
-      "src": "assets/collage/roots.svg",
+      "src": "assets/collage/roots.webp",
       "line": "Корни. Кто-то наверху растёт, а мы тут видим, чем он держится.",
       "w": 26
     },
     {
       "id": "nest",
       "label": "пустое птичье гнездо",
-      "src": "assets/collage/nest.svg",
+      "src": "assets/collage/nest.webp",
       "line": "Птичье гнездо. Пустое. Думаю, они улетели, а не наоборот.",
       "w": 16
     },
     {
       "id": "glove",
       "label": "одна перчатка",
-      "src": "assets/collage/glove.svg",
+      "src": "assets/collage/glove.webp",
       "line": "Перчатка. Одна. Вторая, наверное, долезла.",
       "w": 10
     }

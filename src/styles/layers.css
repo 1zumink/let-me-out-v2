@@ -277,9 +277,8 @@ s.wall-quote__word {
   position: absolute;
   inset: 0;
   background-size: 360px;
-  filter: grayscale(1) brightness(0.32) contrast(1.15);
-  mix-blend-mode: screen;
-  opacity: 0.7;
+  filter: grayscale(1) brightness(0.62) contrast(1.2);
+  opacity: 0.9;
   mask-size: 100% 100%;
   -webkit-mask-size: 100% 100%;
   pointer-events: none;

@@ -58,7 +58,7 @@ export function buildRoom(ctx: FloorCtx, removed: string[], interactive: boolean
   const params = ctx.data.params as { table: CollageItem; wings: CollageItem; backdrop?: CollageItem };
   const room = h('div.room');
   // на узком экране вещи разложены иначе, чтобы зоны нажатия 44 px не перекрывались
-  const narrow = window.matchMedia('(max-width: 560px)').matches;
+  const narrow = window.matchMedia('(max-width: 560px) and (orientation: portrait)').matches;
   const place = (el: HTMLElement, it: Pick<CollageItem, 'x' | 'y' | 'w' | 'rot' | 'xs'>) => {
     const at = narrow && it.xs ? it.xs : it;
     el.style.left = `${at.x}%`;
@@ -75,7 +75,11 @@ export function buildRoom(ctx: FloorCtx, removed: string[], interactive: boolean
   if (planks) backdrop.style.backgroundImage = `url("${planks}")`;
   room.append(backdrop);
 
-  const table = h('div.room-item.room-item--static', { 'aria-hidden': 'true' }, img(params.table.src));
+  // стол — не вещь для уборки, но на нём стоят чашка и лампа (on: "table"): их место считается от столешницы,
+  // поэтому при любом соотношении сторон экрана они стоят на столе, а не рядом
+  const tableImg = img(params.table.src);
+  tableImg.setAttribute('aria-hidden', 'true');
+  const table = h('div.room-item.room-item--static', {}, tableImg);
   place(table, params.table);
   room.append(table);
 
@@ -95,15 +99,23 @@ export function buildRoom(ctx: FloorCtx, removed: string[], interactive: boolean
     const spot = h('div.room-item__spot', { hidden: true, 'aria-hidden': 'true' });
     spot.style.maskImage = spot.style.webkitMaskImage = `url("${base + item.src}")`;
     const wrap = h('div.room-item', {}, spot, btn);
+    wrap.classList.toggle('room-item--flat', !!item.flat);
     // обёртка держит пропорции картинки, чтобы пятно осталось, когда кнопка исчезнет
     picture.addEventListener('load', () => (wrap.style.aspectRatio = `${picture.naturalWidth} / ${picture.naturalHeight}`), { once: true });
-    place(wrap, item);
+    if (item.on === 'table') {
+      // на столе: x — в процентах ширины стола, низ вещи — на столешнице
+      const at = narrow && item.xs ? item.xs : item;
+      wrap.classList.add('room-item--on-table');
+      wrap.style.left = `${at.x}%`;
+      wrap.style.setProperty('--w', String(at.w));
+      wrap.style.setProperty('--rot', `${item.rot ?? between(ctx.rng, -3, 3).toFixed(1)}deg`);
+    } else place(wrap, item);
     if (removed.includes(item.id)) {
       btn.hidden = true;
       spot.hidden = false;
     }
     nodes.set(item.id, { item, wrap, btn, spot });
-    room.append(wrap);
+    (item.on === 'table' ? table : room).append(wrap);
   }
   room.append(wings);
   // пальто убрали раньше — крылья уже на крюке

@@ -24,7 +24,7 @@ export const floor0 = () =>
     decorate: (ctx) => {
       ctx.el.append(h('div.light-strip', { 'aria-hidden': 'true' }));
       // «а один раз упал носок» — вырезка, как и вещи выше
-      const sock = h('img.cutout.floor-sock', { src: import.meta.env.BASE_URL + 'assets/collage/sock.svg', alt: 'носок, упавший сверху', loading: 'lazy' });
+      const sock = h('img.cutout.floor-sock', { src: import.meta.env.BASE_URL + 'assets/collage/sock.webp', alt: 'носок, упавший сверху', loading: 'lazy' });
       ctx.el.append(sock);
     },
   });
@@ -70,7 +70,7 @@ export const floor2 = (): Floor => {
 // 3. Деревянная комната. Второй круг — такой, какой её оставили, без игры
 export const floor3 = () => {
   const revisit = (ctx: FloorCtx) => ctx.lap === 2 && memory.get().roomRemoved !== null;
-  const narrow = window.matchMedia('(max-width: 560px)').matches;
+  const narrow = window.matchMedia('(max-width: 560px) and (orientation: portrait)').matches;
   return gameFloor({
     // на узком экране герой стоит у самого входа, чтобы не закрывать вещи
     heroAt: [narrow ? 10 : 24, 84],
@@ -132,7 +132,7 @@ export const floor5 = () => {
     decorate: (ctx) => {
       // на втором круге снятые крылья так и висят на выступе
       if (ctx.lap === 2 && memory.get().wings === 'removed') {
-        const w = img('assets/collage/wings.svg', 'cutout.hanging-wings');
+        const w = img('assets/collage/wings.webp', 'cutout.hanging-wings');
         ctx.el.append(w);
       }
     },
@@ -207,7 +207,7 @@ export const floor6 = () =>
       const cavity = h('div.cavity', { 'aria-hidden': 'true' }, rope);
       ctx.el.append(cavity);
       if (memory.get().jar) {
-        const jar = img('assets/collage/jar.svg', 'cutout.jar-light');
+        const jar = img('assets/collage/jar.webp', 'cutout.jar-light');
         jar.style.left = `${GHOST_PROPS.jar[0]}%`;
         jar.style.top = `${GHOST_PROPS.jar[1]}%`;
         ctx.el.append(jar);

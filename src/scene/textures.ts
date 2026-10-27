@@ -13,7 +13,14 @@ export const textureUrl = (id: string | undefined) => (id ? byId.get(id) : undef
 export function texturedWalls(svg: SVGSVGElement, id: string | undefined): HTMLElement | null {
   const url = textureUrl(id);
   if (!url) return null;
-  const mask = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg.outerHTML.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"'))}")`;
+  // тонкие выступы остаются чистым силуэтом: фактура на полоске в пару процентов читается как шум
+  const shape = svg.cloneNode(true) as SVGSVGElement;
+  shape.querySelectorAll('polygon').forEach((p) => {
+    const ys = (p.getAttribute('points') ?? '').split(/\s+/).map((pt) => Number(pt.split(',')[1]));
+    if (Math.max(...ys) - Math.min(...ys) < 4) p.remove();
+  });
+  shape.querySelector('.glass')?.remove();
+  const mask = `url("data:image/svg+xml;utf8,${encodeURIComponent(shape.outerHTML.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"'))}")`;
   const el = document.createElement('div');
   el.className = 'walls-texture';
   el.setAttribute('aria-hidden', 'true');
