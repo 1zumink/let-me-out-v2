@@ -1,148 +1,128 @@
-// «Вдох» (этаж 2): держишь «вдох» — вдох, отпускаешь — выдох; герой поднимается на каждый вдох.
-// Перестал жать на 3 с — дыхание включается само, кнопка больше не отвечает. Это и есть событие этажа.
+// «Вдох» (этаж 2): пробел, тап по сцене или «вдох» — вдох; на каждом вдохе герой подтягивается
+// по дымоходу, упираясь в обе стены. Не вдыхаешь 3 с — темнеет; 6 с — срывается к началу коридора.
+// Логика таймеров — в breathePhysics.
 import { h } from '../dom';
-import { bindHold } from '../input';
 import { focus, motion } from '../a11y';
 import { scope, type GameFactory } from './common';
+import { atTop, createClimb, dim, inhale, inhaling, step } from './breathePhysics';
 
-const IDLE_MS = 3000;
 const SIX = 6;
-const NONSTOP = 20;
-const MIN_INHALE_MS = 250;
-const AUTO_BREATH_MS = 2600;
 const X = 50;
 const Y0 = 82;
-const RISE = 1.6; // % за вдох
+const Y1 = 46;
+
+const typing = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
 export const createBreathe: GameFactory = (ctx, onDone) => {
   const s = scope(ctx);
   const { hero, ui } = ctx;
-  let breaths = 0;
-  let inhaling = false;
-  let since = 0;
-  let air = 0;
+  const c = createClimb();
   let raf = 0;
   let last = 0;
-  let idleTimer = 0;
-  let speaking = false;
+  let air = 0;
+  let lightY = Y0;
+  let hold = false; // герой говорит — часы бездействия стоят
+  let saidSix = false;
+  let wasDim = false;
   let finished = false;
-  let auto = false;
   const hint = ctx.hint();
   const stage = () => ctx.el.closest<HTMLElement>('.stage');
 
-  const button = s.own(h('button.btn.btn--breathe', { type: 'button', 'aria-pressed': 'false' }, ui.breathe));
+  const button = s.own(h('button.btn.btn--breathe', { type: 'button' }, ui.breathe));
   const fill = h('span.meter__fill');
   const meter = s.own(
-    h('div.meter.meter--air', { role: 'meter', 'aria-label': ui.air, 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' }, fill),
+    h('div.meter.meter--air', { role: 'meter', 'aria-label': ui.air, 'aria-valuemin': '0', 'aria-valuenow': '0', 'aria-valuemax': '100' }, fill),
   );
 
-  const say = async (key: string) => {
-    speaking = true;
-    s.clear(idleTimer);
+  const say = async (key: string, pause: boolean) => {
+    hold = pause;
     await ctx.say(ctx.lines(key));
-    speaking = false;
+    hold = false;
   };
 
-  const armIdle = () => {
-    s.clear(idleTimer);
-    if (finished || auto) return;
-    idleTimer = s.after(IDLE_MS, () => !inhaling && !speaking && stopped());
-  };
-
-  // на каждом вдохе герой подтягивается по дымоходу: короткий climb, потом снова стоит, упираясь
-  const rise = () => {
-    hero.place(X, Math.max(Y0 - breaths * RISE, 40));
-    if (!inhaling) {
-      hero.set('climb');
-      s.after(450, () => !inhaling && !s.signal.aborted && hero.set('idle'));
-    }
-  };
-
-  const press = () => {
-    if (auto || finished) return;
-    hint.poke();
-    s.clear(idleTimer);
-    inhaling = true;
-    since = performance.now();
-    button.setAttribute('aria-pressed', 'true');
-    hero.set('breathe');
-    stage()?.classList.add('is-inhale');
-  };
-
-  const release = async () => {
-    if (!inhaling) return;
-    inhaling = false;
-    button.setAttribute('aria-pressed', 'false');
-    stage()?.classList.remove('is-inhale');
-    hero.set('idle');
-    if (auto || finished) return;
-    if (performance.now() - since >= MIN_INHALE_MS) {
-      breaths++;
-      rise();
-      if (breaths === SIX) await say('six');
-      if (breaths >= NONSTOP) return end('nonstop');
-    }
-    armIdle();
-  };
-
-  // перестал жать: экран тускнеет, плечи опускаются — и дыхание идёт само
-  const stopped = async () => {
-    if (finished || auto) return;
-    auto = true;
-    button.setAttribute('aria-disabled', 'true');
-    button.classList.add('is-dead');
-    stage()?.classList.add('is-dim');
-    hero.set('idle');
-    await say('stopped');
-    if (s.signal.aborted) return;
-    stage()?.classList.remove('is-dim');
-    const breathe = () => {
-      if (s.signal.aborted || finished) return;
-      hero.set('breathe');
-      stage()?.classList.add('is-inhale');
-      s.after(AUTO_BREATH_MS / 2, () => {
-        stage()?.classList.remove('is-inhale');
-        hero.set('idle');
-        breaths++;
-        rise();
-      });
-      s.after(AUTO_BREATH_MS, breathe);
-    };
-    breathe();
-    await say('auto');
-    end();
-  };
-
-  const end = async (key?: string) => {
+  const breath = () => {
     if (finished) return;
-    finished = true;
-    hint.stop();
-    s.clear(idleTimer);
-    if (key) await say(key);
-    if (!s.signal.aborted) onDone();
+    hint.poke();
+    if (!inhale(c)) return;
+    if (c.breaths === SIX && !saidSix) {
+      saidSix = true;
+      say('six', true);
+    }
   };
 
-  // шкала воздуха: растёт на вдохе, тает на выдохе; без пульсации при reduced motion
+  const pose = (state: Parameters<typeof hero.set>[0]) => hero.state !== state && hero.set(state);
+
   const tick = (now: number) => {
     const dt = Math.min(now - last, 100);
     last = now;
-    const target = inhaling || stage()?.classList.contains('is-inhale') ? 1 : 0;
-    air += (target - air) * Math.min(1, dt / (motion.reduced() ? 1 : 500));
+    step(c, dt, hold);
+    // reduced motion: подъём ступенькой на вдох, срыв — тот же путь вниз
+    const p = motion.reduced() && !c.slipping ? c.target : c.p;
+    const y = Y0 + (Y1 - Y0) * p;
+    hero.place(X, y);
+    // свет идёт за героем; радиус дымохода — как у этажа (floor2), тускнеет и вдыхает — CSS
+    if (Math.abs(y - lightY) > 2) ctx.light(X, (lightY = y) - 16, 24);
+
+    if (c.slipping) pose('slip');
+    else if (c.p < c.target) pose('climb');
+    else if (dim(c)) pose('idle');
+    else pose('breathe');
+
+    const d = dim(c);
+    stage()?.classList.toggle('is-dim', d);
+    if (d && !wasDim && !c.slipping) say('stopped', false);
+    wasDim = d;
+
+    const on = inhaling(c);
+    stage()?.classList.toggle('is-inhale', on);
+    air += ((on ? 1 : 0) - air) * Math.min(1, dt / (motion.reduced() ? 1 : 500));
     fill.style.transform = `scaleX(${air})`;
     meter.setAttribute('aria-valuenow', String(Math.round(air * 10) * 10));
+
+    if (atTop(c)) return end();
     raf = requestAnimationFrame(tick);
+  };
+
+  const end = async () => {
+    finished = true;
+    hint.stop();
+    stage()?.classList.remove('is-inhale', 'is-dim');
+    pose('idle');
+    await say('nonstop', true);
+    if (!s.signal.aborted) onDone();
   };
 
   return {
     start() {
       hint.poke();
-      hero.set('idle');
       hero.place(X, Y0);
+      pose('breathe');
       ctx.controls.append(meter, button);
-      bindHold(button, { onStart: press, onEnd: release }, s.signal);
+      const tap = (e: PointerEvent) => {
+        if (e.button !== 0) return;
+        // по сцене — кроме её кнопок и облачков (облачко тапом пролистывается)
+        if (e.currentTarget !== button && e.target instanceof Element && e.target.closest('button, a, .bubble')) return;
+        e.preventDefault();
+        breath();
+      };
+      button.addEventListener('pointerdown', tap, { signal: s.signal });
+      (stage() ?? ctx.el).addEventListener('pointerdown', tap, { signal: s.signal });
+      // пробел — откуда угодно; Enter — на «вдохе». Клик кнопки не слушаем: не будет двойного вдоха
+      window.addEventListener(
+        'keydown',
+        (e) => {
+          const space = e.code === 'Space' || e.key === ' ';
+          const own = e.target === button || !(e.target instanceof HTMLElement && e.target.closest('button, a, [role="button"]'));
+          if (!own || typing(e.target) || !(space || (e.key === 'Enter' && e.target === button))) return;
+          e.preventDefault();
+          if (!e.repeat) breath();
+        },
+        { signal: s.signal },
+      );
+      window.addEventListener('keyup', (e) => e.target === button && e.key === ' ' && e.preventDefault(), { signal: s.signal });
       last = performance.now();
       raf = requestAnimationFrame(tick);
-      armIdle();
       focus(button);
     },
     stop() {

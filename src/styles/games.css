@@ -206,8 +206,11 @@
 .meter--air {
   width: min(260px, 70vw);
 }
+.stage.is-inhale .light {
+  --lr: 46vmax !important; /* перебивает --lr из ctx.light() */
+}
 .stage.is-dim .light {
-  --lr: 16vmax;
+  --lr: 12vmax !important;
 }
 .stage.is-narrow .light {
   --lr: 24vmax;
