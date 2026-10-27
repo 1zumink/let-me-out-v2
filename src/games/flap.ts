@@ -1,19 +1,26 @@
-// «Взмах» (этаж 5): летишь так, как умеют крылья. Физика — в flapPhysics: поочерёдно в ритме
-// (~3 раза в секунду) — ровно вверх, чаще — крылья путаются и слабеют, одно крыло подряд —
-// ведёт вбок, без взмахов — плавно опускается на ближайший выступ.
-// Наверху горло: «сложить крылья» или «снять крылья».
+// «Взмах» (этаж 5): высокий зал на три экрана, камера летит за героем. Физика — в flapPhysics:
+// поочерёдно в ритме (~3 раза в секунду) — ровно вверх, чаще — крылья путаются и слабеют,
+// одно крыло подряд — несёт вбок, без взмахов — долго парит вниз и садится на выступ.
+// Горло наверху открывается, когда налетался (OPEN_MS в воздухе): «сложить крылья» или «снять крылья».
 import '../styles/flap.css';
 import { h } from '../dom';
 import { focus, motion } from '../a11y';
 import { memory } from '../memory';
 import { scope, type GameFactory } from './common';
-import { atThroat, createFlight, flap as beat, LEDGES, recovery, step, type Side } from './flapPhysics';
+import { atThroat, createFlight, flap as beat, recovery, step, type Side } from './flapPhysics';
 
 export const FLAP = {
-  y0: 82, // пол зала
-  ledge: LEDGES[1].alt, // выступ посередине (доля высоты полёта)
-  yTop: 36, // под горлом
+  hall: 3, // зал на три экрана
+  y0: 82, // пол зала — на нижнем экране (в координатах слота, камера внизу)
+  yTop: 36, // под горлом — на верхнем экране (камера наверху)
 };
+/** Сколько надо пролетать, пока горло не откроется: сначала просто летать. */
+const OPEN_MS = 20000;
+const RISE = (FLAP.hall - 1) * 100; // на столько зал выше экрана
+/** y в единицах зала (0 — верх зала, hall×100 — низ) для высоты полёта alt. */
+export const hallY = (alt: number) => RISE + FLAP.y0 - alt * (RISE + FLAP.y0 - FLAP.yTop);
+/** Куда смотрит камера, чтобы герой держался около середины экрана: 0 — нижний экран, 1 — верхний. */
+const camFor = (yh: number) => Math.min(1, Math.max(0, (RISE + FLAP.y0 - 27 - yh) / RISE));
 
 const LIFTOFF = 0.04; // выше этого — «оторвался»
 const STROKE_MS = 350; // как быстро затихает анимация крыльев после взмаха
@@ -21,7 +28,8 @@ const STROKE_MS = 350; // как быстро затихает анимация 
 export const createFlap: GameFactory = (ctx, onDone) => {
   const s = scope(ctx);
   const { hero, ui } = ctx;
-  const f = createFlight(50, 0);
+  const f = createFlight(50, 0, false);
+  let cam = 0;
   let speaking = false;
   let throat = false;
   let finished = false;
@@ -43,7 +51,13 @@ export const createFlap: GameFactory = (ctx, onDone) => {
   const fold = s.own(h('button.btn', { type: 'button' }, ui.fold));
   const takeOff = s.own(h('button.btn', { type: 'button' }, ui.takeOff));
 
-  const y = () => FLAP.y0 - f.alt * (FLAP.y0 - FLAP.yTop);
+  // камера летит за героем; y героя — на экране, то есть в слоте: зал сдвинут на (1 − cam) × RISE
+  const y = () => hallY(f.alt) - RISE * (1 - cam);
+  const follow = (dt: number, snap = false) => {
+    const target = camFor(hallY(f.alt));
+    cam = snap || motion.reduced() ? target : cam + (target - cam) * Math.min(1, dt / 400);
+    ctx.el.style.setProperty('--cam', cam.toFixed(4));
+  };
   const render = () => {
     hero.place(f.x, y());
     ctx.light(f.x, y() - 16, undefined, true);
@@ -79,6 +93,12 @@ export const createFlap: GameFactory = (ctx, onDone) => {
     if (throat || finished || speaking || motion.paused()) return;
     const wasPerched = f.perch !== null;
     step(f, dt);
+    follow(dt);
+    // налетался — горло открывается: сверху свет
+    if (!f.open && f.airMs > OPEN_MS) {
+      f.open = true;
+      ctx.el.classList.add('is-throat-open');
+    }
     stroke *= Math.exp(-dt / STROKE_MS);
     if (hero.state === 'fly') animate(0.5 + 1.5 * stroke);
     render();
@@ -105,8 +125,10 @@ export const createFlap: GameFactory = (ctx, onDone) => {
     btnL.remove();
     btnR.remove();
     rhythm.remove();
-    // долетает под само горло — тем же полётом, а не скольжением
+    // долетает под само горло — тем же полётом, а не скольжением; камера — на верхнем экране
     hero.el.style.rotate = '';
+    follow(0, true);
+    hero.place(f.x, y());
     ctx.light(50, FLAP.yTop - 16);
     await hero.go(50, FLAP.yTop, { state: 'fly', ms: 700, stride: 4, signal: s.signal });
     if (s.signal.aborted) return;

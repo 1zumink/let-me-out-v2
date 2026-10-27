@@ -559,3 +559,32 @@
 .is-reduced .floor .room {
   transition: none;
 }
+
+/* зал выше экрана (крылья): камера --cam слота, 0 — нижний экран, 1 — верхний */
+.hall {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(var(--screens, 3) * 100%);
+  top: calc((var(--cam, 0) - 1) * (var(--screens, 3) - 1) * 100%);
+}
+/* горло открылось — сверху пробивается свет */
+.floor.is-throat-open .hall::after {
+  content: '';
+  position: absolute;
+  left: 38%;
+  right: 38%;
+  top: 0;
+  height: 14%;
+  background: radial-gradient(ellipse at 50% 10%, rgb(242 230 201 / 0.35), transparent 70%);
+  pointer-events: none;
+  animation: throat-open 2.4s ease both;
+}
+@keyframes throat-open {
+  from {
+    opacity: 0;
+  }
+}
+.is-reduced .floor.is-throat-open .hall::after {
+  animation: none;
+}

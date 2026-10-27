@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createFlight, flap, step, LEDGES, type Flight, type Side } from '../src/games/flapPhysics';
+import { createFlight, flap, step, LEDGES, PHYS, type Flight, type Side } from '../src/games/flapPhysics';
 
 const FRAME = 16;
 
@@ -26,11 +26,11 @@ describe('flapPhysics', () => {
     const alts = fly(f, 333, alternate, 3000);
     // каждую секунду заметно выше прежнего
     const perSec = [alts[62], alts[124], alts[186]];
-    expect(perSec[0]).toBeGreaterThan(0.12);
-    expect(perSec[1] - perSec[0]).toBeGreaterThan(0.12);
-    expect(perSec[2] - perSec[1]).toBeGreaterThan(0.12);
+    expect(perSec[0]).toBeGreaterThan(0.04);
+    expect(perSec[1] - perSec[0]).toBeGreaterThan(0.08);
+    expect(perSec[2] - perSec[1]).toBeGreaterThan(0.08);
     // и почти не уводит вбок
-    expect(Math.abs(f.x - 50)).toBeLessThan(4);
+    expect(Math.abs(f.x - 50)).toBeLessThan(8);
   });
 
   it('мешанина каждые 80 мс поднимает заметно хуже ритма', () => {
@@ -65,18 +65,19 @@ describe('flapPhysics', () => {
   it('стены не выпускают из зала', () => {
     const f = createFlight(50, 0);
     fly(f, 333, () => 'left', 6000);
-    expect(f.x).toBeLessThanOrEqual(78);
+    expect(f.x).toBeLessThanOrEqual(PHYS.wallR);
   });
 
   it('без ввода садится на ближайший выступ ниже', () => {
-    const mid = createFlight(50, 0.9);
+    // над выступом 0.8 (x 28–50)
+    const mid = createFlight(40, 0.9);
     for (let t = 0; t < 8000; t += FRAME) step(mid, FRAME);
-    expect(mid.alt).toBe(LEDGES[1].alt);
-    expect(mid.perch).toBe(1);
+    expect(mid.alt).toBe(0.8);
+    expect(LEDGES[mid.perch!].alt).toBe(0.8);
 
-    // мимо выступа (x вне 40–60) — до пола
-    const side = createFlight(35, 0.9);
-    for (let t = 0; t < 12000; t += FRAME) step(side, FRAME);
+    // мимо всех выступов (x = 58) — до пола
+    const side = createFlight(58, 0.9);
+    for (let t = 0; t < 30000; t += FRAME) step(side, FRAME);
     expect(side.alt).toBe(0);
     expect(side.perch).toBe(0);
   });
@@ -91,9 +92,23 @@ describe('flapPhysics', () => {
     }
   });
 
-  it('выступ односторонний: снизу пролетаешь', () => {
+  it('выступ односторонний: снизу пролетаешь до самого горла', () => {
     const f = createFlight(50, 0);
-    const alts = fly(f, 333, alternate, 6000);
+    const alts = fly(f, 333, alternate, 20000);
     expect(Math.max(...alts)).toBe(1);
+  });
+
+  it('горло закрыто — до верха не долететь, открыли — долетаешь', () => {
+    const f = createFlight(50, 0, false);
+    const alts = fly(f, 333, alternate, 20000);
+    expect(Math.max(...alts)).toBeLessThanOrEqual(PHYS.closed);
+    f.open = true;
+    expect(Math.max(...fly(f, 333, alternate, 8000))).toBe(1);
+  });
+
+  it('в воздухе копится время полёта', () => {
+    const f = createFlight(50, 0);
+    fly(f, 333, alternate, 3000);
+    expect(f.airMs).toBeGreaterThan(2000);
   });
 });

@@ -1,7 +1,8 @@
 // Физика «Взмаха» без DOM. x — % ширины зала, alt — 0 (пол) … 1 (горло), время — мс.
-// Крылья неудобные, но предсказуемые: каждое восстанавливается ~350 мс, левое толкает вверх
-// и вправо, правое — вверх и влево. Поочерёдно в ритме — ровно вверх; чаще — крылья путаются:
-// взмах слабеет и покачивает; одно крыло подряд — уводит вбок.
+// Зал высокий, на три экрана, и широкий — от стены до стены: здесь можно летать, а не ползти.
+// Крылья лёгкие, но свои: каждое восстанавливается ~300 мс, левое толкает вверх и вправо,
+// правое — вверх и влево. Поочерёдно в ритме — ровно вверх; сильно чаще — путаются и слабеют;
+// одно крыло подряд — уводит вбок. Без взмахов долго парит вниз. Горло открывается не сразу (open).
 
 export type Side = 'left' | 'right';
 
@@ -12,26 +13,31 @@ export interface Ledge {
 }
 
 export const PHYS = {
-  gravity: 0.45, // alt/с²
-  drag: 3, // 1/с: без взмахов снижение ~gravity/drag = 0.15 alt/с
-  lift: 0.4, // alt/с за полный взмах
-  push: 9, // %/с вбок за полный взмах
-  dragX: 3, // 1/с
-  recoverMs: 350,
-  cross: 1.5, // насколько мешает другое, ещё не восстановившееся крыло
-  wobble: 6, // %/с: покачивание от спутанного взмаха
+  gravity: 0.12, // alt/с²
+  drag: 2, // 1/с: без взмахов снижение ~gravity/drag = 0.06 alt/с — парит
+  lift: 0.13, // alt/с за полный взмах: в ритме весь зал ~8 с
+  push: 16, // %/с вбок за полный взмах
+  dragX: 1.5, // 1/с: вбок несёт далеко
+  recoverMs: 300,
+  cross: 2, // насколько мешает другое, ещё не восстановившееся крыло
+  wobble: 4, // %/с: покачивание от спутанного взмаха
   tilt: 8, // градусов наклона при самом слабом взмахе
   tiltDecay: 5, // 1/с
-  wallL: 22,
-  wallR: 78,
-  wallSoft: 6, // в стольких % от стены начинает отталкивать
-  wallK: 40, // 1/с² на % проникновения
+  wallL: 14,
+  wallR: 86,
+  wallSoft: 5, // в стольких % от стены начинает отталкивать
+  wallK: 30, // 1/с² на % проникновения
+  /** Горло закрыто — выше этого не подняться. */
+  closed: 0.93,
   maxDt: 50,
 };
 
+/** Пол и выступы зала — места отдохнуть; по ним и рисуется силуэт (places.ts → floor5). */
 export const LEDGES: Ledge[] = [
-  { alt: 0, x0: 30, x1: 70 },
-  { alt: 0.5, x0: 40, x1: 60 },
+  { alt: 0, x0: 6, x1: 94 },
+  { alt: 0.3, x0: 10, x1: 34 },
+  { alt: 0.55, x0: 64, x1: 90 },
+  { alt: 0.8, x0: 28, x1: 50 },
 ];
 
 export interface Flight {
@@ -48,6 +54,10 @@ export interface Flight {
   /** Наклон корпуса в градусах — только для картинки. */
   tilt: number;
   flaps: number;
+  /** Горло открыто: можно долететь до самого верха. */
+  open: boolean;
+  /** Сколько мс в воздухе всего. */
+  airMs: number;
 }
 
 export interface FlightOpts {
@@ -55,9 +65,9 @@ export interface FlightOpts {
   wobble?: boolean;
 }
 
-export function createFlight(x = 50, alt = 0): Flight {
+export function createFlight(x = 50, alt = 0, open = true): Flight {
   const perch = LEDGES.findIndex((l) => l.alt === alt && x >= l.x0 && x <= l.x1);
-  return { x, alt, vx: 0, vy: 0, lastL: -Infinity, lastR: -Infinity, t: 0, perch: perch < 0 ? null : perch, tilt: 0, flaps: 0 };
+  return { x, alt, vx: 0, vy: 0, lastL: -Infinity, lastR: -Infinity, t: 0, perch: perch < 0 ? null : perch, tilt: 0, flaps: 0, open, airMs: 0 };
 }
 
 /** Насколько крыло готово к новому взмаху: 0 — только что взмахнуло, 1 — восстановилось. */
@@ -117,10 +127,13 @@ export function step(f: Flight, dtMs: number) {
     }
   }
 
+  f.airMs += dt * 1000;
   const before = f.alt;
   f.vy -= PHYS.gravity * dt;
   f.vy *= Math.exp(-PHYS.drag * dt);
   f.alt += f.vy * dt;
+  // закрытое горло — мягкий потолок: упёрся и отскочил вниз
+  if (!f.open && f.alt > PHYS.closed) [f.alt, f.vy] = [PHYS.closed, -Math.abs(f.vy) * 0.3];
   if (f.alt >= 1) [f.alt, f.vy] = [1, 0];
   // выступы односторонние: снизу пролетаешь, сверху садишься
   if (f.vy < 0) {

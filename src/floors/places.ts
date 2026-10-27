@@ -6,7 +6,8 @@ import { memory } from '../memory';
 import { games } from '../games';
 import { buildRoom } from '../games/remove';
 import { GHOST_PROPS } from '../games/ghost';
-import { FLAP } from '../games/flap';
+import { FLAP, hallY } from '../games/flap';
+import { LEDGES } from '../games/flapPhysics';
 import { HOLD_WALL } from '../games/hold';
 import { Creature } from '../ui/Creature';
 import { gameFloor } from './gameFloor';
@@ -173,30 +174,40 @@ export const floor4 = () =>
     },
   });
 
-// 5. Крылья: высокий зал, выступ посередине, наверху узкое горло
+// 5. Крылья: высокий зал на три экрана, стены у краёв, выступы по залу — где отдохнуть; наверху узкое горло.
+// Силуэт и выступы — в единицах зала (FLAP.hall × 100), путь подъёма — в координатах слота при камере внизу и наверху
 export const floor5 = () => {
-  const yOf = (alt: number) => FLAP.y0 - alt * (FLAP.y0 - FLAP.yTop);
+  const H = FLAP.hall * 100;
   return gameFloor({
     heroAt: [50, FLAP.y0],
     restAt: [50, FLAP.yTop - 12],
     restState: 'idle',
     light: [50, 50, 46],
+    hall: FLAP.hall,
     world: {
-      wall: 10,
+      wall: 6,
       ledges: [
-        { x0: 30, x1: 70, y: FLAP.y0, depth: 10 },
-        { x0: 40, x1: 60, y: yOf(FLAP.ledge), depth: 3 },
+        ...LEDGES.map((l, i) => ({ x0: l.x0, x1: l.x1, y: hallY(l.alt), depth: i === 0 ? 10 : 3 })),
         { x0: 40, x1: 60, y: FLAP.yTop - 12, depth: 3 },
       ],
       throat: { y: FLAP.yTop - 6, gap: 12 },
     },
-    // дальше — не по стене зала, а сквозь горло: его стенки и есть стены
-    ground: () => ({ exit: [44, 44] }),
+    // вход — пол зала (камера внизу), выход — сквозь горло с выступа над ним (камера наверху): стенки горла и есть стены
+    ground: () => ({
+      exit: [44, 44],
+      ledges: [
+        { x0: LEDGES[0].x0, x1: LEDGES[0].x1, y: FLAP.y0 },
+        { x0: 40, x1: 60, y: FLAP.yTop - 12 },
+      ],
+    }),
     decorate: (ctx) => {
-      // на втором круге снятые крылья так и висят на выступе
+      // на втором круге снятые крылья так и висят на правом выступе
       if (ctx.lap === 2 && memory.get().wings === 'removed') {
         const w = img('assets/collage/wings.webp', 'cutout.hanging-wings');
-        ctx.el.append(w);
+        const perch = LEDGES.find((l) => l.alt > 0.5 && l.alt < 0.7) ?? LEDGES[1];
+        w.style.left = `${(perch.x0 + perch.x1) / 2}%`;
+        w.style.top = `${((hallY(perch.alt) - 14) / H) * 100}%`;
+        (ctx.el.querySelector('.hall') ?? ctx.el).append(w);
       }
     },
     enterLines: (ctx) => {

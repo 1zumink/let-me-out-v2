@@ -1,10 +1,10 @@
-// «Вдох» (этаж 2): пробел, тап по сцене или «вдох» — вдох; на каждом вдохе герой подтягивается
-// по дымоходу, упираясь в обе стены. Не вдыхаешь 3 с — темнеет; 6 с — срывается к началу коридора.
+// «Вдох» (этаж 2): пробел, тап по сцене или «вдох» — вдох; пока дышишь, герой ползёт по дымоходу,
+// упираясь в обе стены, и встаёт, как только перестал. Не вдыхаешь 3 с — темнеет; 6 с — срывается к началу коридора.
 // Логика таймеров — в breathePhysics.
 import { h } from '../dom';
 import { focus, motion } from '../a11y';
 import { scope, type GameFactory } from './common';
-import { atTop, createClimb, dim, inhale, inhaling, step } from './breathePhysics';
+import { atTop, createClimb, dim, inhale, inhaling, moving, step } from './breathePhysics';
 
 const SIX = 6;
 const X = 50;
@@ -57,15 +57,16 @@ export const createBreathe: GameFactory = (ctx, onDone) => {
     const dt = Math.min(now - last, 100);
     last = now;
     step(c, dt, hold);
-    // reduced motion: подъём ступенькой на вдох, срыв — тот же путь вниз
-    const p = motion.reduced() && !c.slipping ? c.target : c.p;
+    // reduced motion: подъём ступеньками по 5 %, срыв — тот же путь вниз
+    const p = motion.reduced() && !c.slipping ? Math.floor(c.p * 20) / 20 : c.p;
     const y = Y0 + (Y1 - Y0) * p;
     hero.place(X, y);
     // свет идёт за героем; радиус дымохода — как у этажа (floor2), тускнеет и вдыхает — CSS
     if (Math.abs(y - lightY) > 2) ctx.light(X, (lightY = y) - 16, 24);
 
     if (c.slipping) pose('fall');
-    else if (c.p < c.target) pose('climb');
+    // лезет в распор — кадры идут за подъёмом: встал — встали и ноги
+    else if (moving(c)) hero.scrub('chimney', (c.p * 12) % 1);
     else if (dim(c)) pose('idle');
     else pose('breathe');
 

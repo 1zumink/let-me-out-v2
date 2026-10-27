@@ -19,32 +19,34 @@ export interface SilhouetteOptions {
   glass?: number;
   /** горло: стены сходятся до щели gap на высоте y, % */
   throat?: { y: number; gap: number };
+  /** Высота мира в тех же единицах, что y: 100 — экран, 300 — зал на три экрана. */
+  height?: number;
 }
 
 const jag = (rng: Rng, amp: number) => (rng() - 0.5) * amp;
 
 /** Вертикальный неровный край: точки сверху вниз. */
-function edge(rng: Rng, x: number, amp: number): [number, number][] {
+function edge(rng: Rng, x: number, amp: number, height = 100): [number, number][] {
   const pts: [number, number][] = [];
-  for (let y = -2; y <= 102; y += 3 + rng() * 3) pts.push([x + jag(rng, amp), y]);
-  pts.push([x + jag(rng, amp), 102]);
+  for (let y = -2; y <= height + 2; y += 3 + rng() * 3) pts.push([x + jag(rng, amp), y]);
+  pts.push([x + jag(rng, amp), height + 2]);
   return pts;
 }
 
 const poly = (pts: [number, number][]) => pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
 
-export function silhouette(rng: Rng, { wall = 11, ledges = [], glass, throat }: SilhouetteOptions = {}) {
+export function silhouette(rng: Rng, { wall = 11, ledges = [], glass, throat, height = 100 }: SilhouetteOptions = {}) {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('class', 'silhouette');
-  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('viewBox', `0 0 100 ${height}`);
   svg.setAttribute('preserveAspectRatio', 'none');
   svg.setAttribute('aria-hidden', 'true');
 
-  const left = edge(rng, wall, 3);
-  const right = edge(rng, 100 - wall, 3).reverse();
+  const left = edge(rng, wall, 3, height);
+  const right = edge(rng, 100 - wall, 3, height).reverse();
   const shapes = [
-    poly([[-1, -2], ...left, [-1, 102]]),
-    poly([[101, 102], ...right, [101, -2]]),
+    poly([[-1, -2], ...left, [-1, height + 2]]),
+    poly([[101, height + 2], ...right, [101, -2]]),
     ...(throat
       ? [
           poly([[wall - 1, throat.y - 16], [50 - throat.gap / 2 + jag(rng, 1), throat.y - 1], [50 - throat.gap / 2 + jag(rng, 1), throat.y + 1], [wall - 1, throat.y + 12]]),

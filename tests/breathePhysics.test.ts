@@ -25,18 +25,28 @@ describe('breathePhysics', () => {
     expect(c.slips).toBe(0);
   });
 
-  it('частые тапы не быстрее одного вдоха в inhaleMs', () => {
+  it('частые тапы не быстрее одного вдоха в inhaleMs и не ускоряют подъём', () => {
     const c = createClimb();
     breathe(c, 100, 10_000);
     expect(c.breaths).toBeLessThanOrEqual(10_000 / BREATH.inhaleMs + 1);
-    expect(c.p).toBeLessThan(0.55);
+    expect(c.p).toBeCloseTo(10_000 / BREATH.climbMs, 1);
+  });
+
+  it('перестал дышать — встаёт сразу, запаса вдохов нет', () => {
+    const c = createClimb();
+    breathe(c, 1000, 10_000);
+    breathe(c, 0, BREATH.flowMs);
+    const p = c.p;
+    breathe(c, 0, 1_500);
+    expect(c.p).toBeCloseTo(p, 5);
   });
 
   it('без вдоха > 3 с — темно, но ещё не срыв', () => {
     const c = createClimb();
     breathe(c, 1500, 6_000);
+    breathe(c, 0, BREATH.flowMs);
     const p = c.p;
-    breathe(c, 0, 3_500);
+    breathe(c, 0, 3_500 - BREATH.flowMs);
     expect(dim(c)).toBe(true);
     expect(c.slipping).toBe(false);
     expect(c.p).toBeCloseTo(p, 5);

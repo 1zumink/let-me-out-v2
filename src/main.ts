@@ -399,10 +399,13 @@ function runUpAction() {
   fn?.();
 }
 
+// первый экран и «выше» после финала — по жесту целиком: трекпад и палец шлют прокрутку по нескольку пикселей
+let swipe = 0;
 input.onScroll((delta, ended) => {
-  if (intro.isOpen) return void (delta > 30 && startStory());
+  swipe = ended ? 0 : swipe + delta;
+  if (intro.isOpen) return void (swipe > 30 && startStory());
   if (exitScreen.isOpen) return;
-  if (upAction) return void (delta > 30 && !upBtn.hidden && runUpAction());
+  if (upAction) return void (swipe > 30 && !upBtn.hidden && runUpAction());
   if (ended) return climb.release();
   if (delta > 0 ? beginClimb() : climb.progress > 0) climb.drive(delta);
 });

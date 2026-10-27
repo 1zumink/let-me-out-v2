@@ -5,6 +5,7 @@ import type { HeroState } from '../hero/hero';
 import type { Line } from '../data';
 import { silhouette, type SilhouetteOptions } from '../scene/silhouette';
 import { texturedWalls } from '../scene/textures';
+import { h } from '../dom';
 import type { Floor, FloorCtx, Ground, Pose } from './types';
 
 export interface GameFloorOptions {
@@ -16,6 +17,8 @@ export interface GameFloorOptions {
   restAt?: [number, number];
   restState?: HeroState;
   world?: SilhouetteOptions;
+  /** Место выше экрана: зал на столько экранов (world в единицах зала, 100 на экран). Камера — --cam слота, 0 низ … 1 верх. */
+  hall?: number;
   /** Своё к стенам и уступам силуэта: выступы этажа, сторона, горло. */
   ground?: (ctx: FloorCtx) => Partial<Ground>;
   /** Свет при входе: x, y, радиус; по умолчанию — над героем. */
@@ -39,11 +42,17 @@ export function gameFloor(opts: GameFloorOptions = {}): Floor {
 
   return {
     entry,
-    ground: () => groundOf(world, opts.ground?.(ctx)),
+    // у зала уступы силуэта — в единицах зала; уступы для пути подъёма место даёт само (ground) в координатах слота
+    ground: () => groundOf(opts.hall ? { wall: world.wall } : world, opts.ground?.(ctx)),
     mount(c) {
       ctx = c;
-      const walls = silhouette(c.rng, world);
-      c.el.append(walls);
+      const walls = silhouette(c.rng, opts.hall ? { ...world, height: opts.hall * 100 } : world);
+      if (opts.hall) {
+        const hall = h('div.hall');
+        hall.style.setProperty('--screens', String(opts.hall));
+        c.el.append(hall);
+        hall.append(walls);
+      } else c.el.append(walls);
       opts.decorate?.(c);
       // фактура — после decorate: этажи дорисовывают в силуэт свои выступы
       const tex = texturedWalls(walls, (c.data.params as { texture?: string } | undefined)?.texture);
